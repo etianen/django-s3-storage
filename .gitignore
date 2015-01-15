@@ -1,0 +1,15 @@
+.DS_Store
+*.db
+.project
+.pydevproject
+.settings
+*.pyc
+*.pyo
+dist
+build
+MANIFEST
+src/django_reversion.egg-info/
+docs/_build
+*.sqlite3
+.coverage
+*.egg-info

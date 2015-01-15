@@ -8,6 +8,17 @@ python:
 env:
   matrix:
     - DJANGO=django==1.7.3
+  global:
+    # AWS_REGION
+    - secure: "X1EQYf7UP8ynhObVgeA42ZYUIjcUNI6Lgj0MfE0XsOmBc9BkNlf1wVe3MlCCTVh/l4OI80r0YkxGrvMIGnCDbI9SD7PbAnYSKlMpnKTUjniM6ZkGME4t/wxreMakbwMVbJXnqkR3dDUWxJ+RBeksrwKwqvESOlGsc4ew9K6h1Lw="
+    # AWS_ACCESS_KEY_ID
+    - secure: "fYo2oYtTp7LhynDNV7oDkfLu9qowpghYjZZlCs+YyxE7+QQtYjTGTK1yd4L9uQVf0bEVD0KQI4TU6Gv8bQir0DJge+DTxuYp1a2zkDegog8JpQT3QIA7h2IPsC3JgHESY482MDuIkiA7E5NLHtEZBcqcVCWk6a117UIh0kJID8I="
+    # AWS_SECRET_ACCESS_KEY
+    - secure: "N0FrVtz+PdOH4wFKUTNxcAD1pmTyz2et9mroGV/uRPrIo/zXRBrj3zHdjneZGw+5m+5O246qgprAXtsj61YusGXGYmdr9B5bHyAzVD2T+5slyN37dZVfHPMx55PCMBUdG1aMbNTAE8G7AmwyKt5ujIZliDOERxjqzFsHrNCf8Ks="
+    # AWS_S3_BUCKET_NAME
+    - secure: "J9RE3MbU26kmTg5y8WwMD0RnW99SxjJvNY4uFfdbDuPlAn6BV9BQuq1qaPYGksdYdJ8WmXhlRKIhjXjZIgvIEzDQ0msPbJ3dU7uCJFrZRVG3I/jbZR0EfcOiWCaDuQU2TDZw5bo4qanTr4nnZpnBVqj0erjytxUkyqIuRAR3xOg="
+    # AWS_S3_BUCKET_NAME_STATIC
+    - secure: "LY/cIlI4DW9JAYbPK3pztVptQoaLyLU8UX7s1k9+OmJ/jkfJozbsC9PS3VAIQqJVSE78oRjp2tJOkpg1CsOxI6PttplMzoJznNBbQ6G5iCITugV+o0wuCesM31FqMratOWalZjoDMCdv/qb624KOO2o+0XR5EpLUk+/iJmtdtaI="
 matrix:
   fast_finish: true
 cache:

@@ -48,7 +48,7 @@ class S3Storage(Storage):
         )
         self.bucket = self.s3_connection.get_bucket(self.aws_s3_bucket_name)
         # All done!
-        super().__init__()
+        super(S3Storage, self).__init__()
 
     # Helpers.
 
@@ -320,7 +320,7 @@ class StaticS3Storage(S3Storage):
     def __init__(self, **kwargs):
         kwargs["aws_s3_bucket_name"] = kwargs.get("aws_s3_bucket_name") or settings.AWS_S3_BUCKET_NAME_STATIC
         kwargs.setdefault("aws_s3_bucket_auth", False)
-        super().__init__(**kwargs)
+        super(StaticS3Storage, self).__init__(**kwargs)
 
 
 class ManifestStaticS3Storage(ManifestFilesMixin, StaticS3Storage):

@@ -48,7 +48,7 @@ class TestS3Storage(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
+        super(TestS3Storage, cls).setUpClass()
         cls.upload_base = posixpath.join("test", uuid.uuid4().hex)
         cls.storage = S3Storage()
         cls.insecure_storage = S3Storage(aws_s3_bucket_auth=False)
@@ -65,7 +65,7 @@ class TestS3Storage(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super().tearDownClass()
+        super(TestS3Storage, cls).tearDownClass()
         cls.storage.delete(cls.upload_path)
 
     # Assertions.

@@ -1,7 +1,15 @@
-from django.test import TestCase
+import posixpath, uuid, datetime, time
 from unittest import skipUnless
 
+import requests
+
+from django.core.files.base import ContentFile
+from django.test import TestCase
+from django.utils.encoding import force_bytes, force_text
+from django.utils import timezone
+
 from django_s3_storage.conf import settings
+from django_s3_storage.storage import S3Storage, StaticS3Storage
 
 
 @skipUnless(settings.AWS_REGION, "No settings.AWS_REGION supplied.")
@@ -19,3 +27,197 @@ class TestS3Storage(TestCase):
     def testLazySettingsClassLookup(self):
         self.assertEqual(settings.__class__.AWS_REGION.name, "AWS_REGION")
         self.assertEqual(settings.__class__.AWS_REGION.default, "us-east-1")
+
+    # Lifecycle.
+
+    @classmethod
+    def generateUploadBasename(cls, extension=None):
+        return uuid.uuid4().hex + (extension or ".txt")
+
+    @classmethod
+    def generateUploadPath(cls, basename=None, extension=None):
+        return posixpath.join(cls.upload_dir, basename or cls.generateUploadBasename(extension))
+
+    @classmethod
+    def saveTestFile(cls, upload_path=None, storage=None, file=None):
+        (storage or cls.storage).save(upload_path or cls.upload_path, file or cls.file)
+        time.sleep(0.2)  # Give it a chance to propagate over S3.
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.upload_base = posixpath.join("test", uuid.uuid4().hex)
+        cls.storage = S3Storage()
+        cls.insecure_storage = S3Storage(aws_s3_bucket_auth=False)
+        cls.static_storage = StaticS3Storage()
+        cls.file_contents = force_bytes(uuid.uuid4().hex * 1000, "ascii")
+        cls.file = ContentFile(cls.file_contents)
+        cls.upload_dirname = uuid.uuid4().hex
+        cls.upload_dir = posixpath.join(cls.upload_base, cls.upload_dirname)
+        cls.upload_basename = cls.generateUploadBasename()
+        cls.upload_path = cls.generateUploadPath(cls.upload_basename)
+        cls.upload_time = datetime.datetime.now()
+        # Save a file to the upload path.
+        cls.saveTestFile()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        cls.storage.delete(cls.upload_path)
+
+    # Assertions.
+
+    def assertSimilarDatetime(self, a, b, resolution=datetime.timedelta(seconds=10)):
+        """
+        Assets that two datetimes are similar to each other.
+
+        This allows testing of two generated timestamps that might differ by
+        a few milliseconds due to network/disk latency, but should be roughly similar.
+
+        The default resolution assumes that a 10-second window is similar
+        enough, and can be tweaked with the `resolution` argument. 
+        """
+        self.assertLess(abs(a - b), resolution)
+
+    def assertCorrectTimestamp(self, timestamp):
+        self.assertSimilarDatetime(timestamp, self.upload_time)
+        self.assertTrue(timezone.is_naive(timestamp))
+
+    def assertUrlAccessible(self, url, file_contents=None, content_type="text/plain", content_encoding="gzip"):
+        response = requests.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("content-type"), content_type)
+        self.assertEqual(response.headers.get("content-encoding"), content_encoding)
+        self.assertEqual(response.content, file_contents or self.file_contents)
+        return response
+
+    def assertUrlInaccessible(self, url):
+        response = requests.get(url)
+        self.assertEqual(response.status_code, 403)
+
+    # Tests.
+
+    def testOpen(self):
+        self.assertEqual(self.storage.open(self.upload_path).read(), self.file_contents)
+
+    def testCannotOpenInWriteMode(self):
+        with self.assertRaises(ValueError) as cm:
+            self.storage.open(self.upload_path, "wb")
+        self.assertEqual(force_text(cm.exception), "S3 files can only be opened in read-only mode")
+
+    def testIOErrorRaisedOnOpenMissingFile(self):
+        upload_path = self.generateUploadPath()
+        with self.assertRaises(IOError) as cm:
+            self.storage.open(upload_path)
+        self.assertEqual(force_text(cm.exception), "File {name} does not exist".format(
+            name = upload_path,
+        ))
+
+    def testSaveTextModeFile(self):
+        upload_path = self.generateUploadPath()
+        file_contents = "Fôö"  # Note the accents. This is a unicode string.
+        self.storage.save(upload_path, ContentFile(file_contents, upload_path))
+        try:
+            stored_contents = self.storage.open(upload_path).read()
+            self.assertEqual(stored_contents, force_bytes(file_contents))
+        finally:
+            self.storage.delete(upload_path)
+
+    def testExists(self):
+        self.assertTrue(self.storage.exists(self.upload_path))
+        self.assertFalse(self.storage.exists(self.generateUploadPath()))
+
+    def testDelete(self):
+        # Make a new file to delete.
+        upload_path = self.generateUploadPath()
+        self.saveTestFile(upload_path)
+        self.assertTrue(self.storage.exists(upload_path))
+        # Delete the file.
+        self.storage.delete(upload_path)
+        self.assertFalse(self.storage.exists(upload_path))
+
+    def testListdir(self):
+        self.assertEqual(self.storage.listdir(self.upload_dir), ([], [self.upload_basename]))
+        self.assertEqual(self.storage.listdir(self.upload_base), ([self.upload_dirname], []))
+
+    def testSize(self):
+        size = self.storage.size(self.upload_path)
+        self.assertGreater(size, 100)  # It should take up some space!
+        self.assertLess(size, len(self.file_contents))  # But less space than the original, due to gzipping.
+
+    def testAccessedTime(self):
+        self.assertCorrectTimestamp(self.storage.accessed_time(self.upload_path))
+
+    def testCreatedTime(self):
+        self.assertCorrectTimestamp(self.storage.created_time(self.upload_path))
+
+    def testModifiedTime(self):
+        self.assertCorrectTimestamp(self.storage.modified_time(self.upload_path))
+
+    def testSecureUrlIsAccessible(self):
+        # Generate a secure URL.
+        url = self.storage.url(self.upload_path)
+        # Ensure that the URL is signed.
+        self.assertIn("?", url)
+        # Ensure that the URL is accessible.
+        response = self.assertUrlAccessible(url)
+        self.assertEqual(response.headers["cache-control"], "private, max-age=3600")
+
+    def testSecureUrlIsPrivate(self):
+        # Generate an insecure URL.
+        url = self.insecure_storage.url(self.upload_path)
+        # Ensure that the URL is unsigned.
+        self.assertNotIn("?", url)
+        # Ensure that the unsigned URL is inaccessible.
+        self.assertUrlInaccessible(url)
+
+    def testInsecureUrlIsAccessible(self):
+        # Make a new insecure file.
+        upload_path = self.generateUploadPath()
+        self.saveTestFile(upload_path, storage=self.insecure_storage)
+        try:
+            self.assertTrue(self.insecure_storage.exists(upload_path))
+            # Generate an insecure URL.
+            url = self.insecure_storage.url(upload_path)
+            # Ensure that the URL is unsigned.
+            self.assertNotIn("?", url)
+            # Ensure that the URL is accessible.
+            response = self.assertUrlAccessible(url)
+            self.assertEqual(response.headers["cache-control"], "public, max-age=31536000")
+        finally:
+            # Clean up the test file.
+            self.insecure_storage.delete(upload_path)
+
+    def testNonGzippedFile(self):
+        # Make a new non-gzipped file.
+        upload_path = self.generateUploadPath(extension=".jpg")
+        self.saveTestFile(upload_path)
+        try:
+            self.assertTrue(self.storage.exists(upload_path))
+            # Generate a URL.
+            url = self.storage.url(upload_path)
+            # Ensure that the URL is accessible.
+            self.assertUrlAccessible(url, content_type="image/jpeg", content_encoding=None)
+        finally:
+            # Clean up the test file.
+            self.storage.delete(upload_path)
+
+    def testSmallGzippedFile(self):
+        # A tiny file gets bigger when gzipped.
+        upload_path = self.generateUploadPath()
+        file_contents = force_bytes(uuid.uuid4().hex, "ascii")
+        self.saveTestFile(upload_path, file=ContentFile(file_contents))
+        try:
+            self.assertTrue(self.storage.exists(upload_path))
+            # Generate a URL.
+            url = self.storage.url(upload_path)
+            # Ensure that the URL is accessible.
+            self.assertUrlAccessible(url, file_contents=file_contents, content_encoding=None)
+        finally:
+            # Clean up the test file.
+            self.storage.delete(upload_path)
+
+    # Static storage tests.
+
+    def testStaticS3StorageDefaultsToPublic(self):
+        self.assertFalse(self.static_storage.aws_s3_bucket_auth)

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 """
 Settings used by django-s3-storage.
 """
@@ -7,7 +9,7 @@ import os
 from django.conf import settings
 
 
-class LazySetting():
+class LazySetting(object):
 
     """
     A proxy to a named Django setting.
@@ -23,7 +25,7 @@ class LazySetting():
         return getattr(obj._settings, self.name, self.default)
 
 
-class LazySettings():
+class LazySettings(object):
 
     """
     A proxy to s3-specific django settings.

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import datetime, mimetypes, gzip
 from io import TextIOBase
 from email.utils import parsedate_tz

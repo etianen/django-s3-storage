@@ -47,7 +47,7 @@ How it works
 ------------
 
 Uploaded user files are stored on Amazon S3 using the private access control level. When a URL for the file
-is generate, querystring auth with a timeout of 1 hour is used to secure access to the file.
+is generated, querystring auth with a timeout of 1 hour is used to secure access to the file.
 
 Static files are stored on Amazon S3 using the public access control level and aggressive caching.
 

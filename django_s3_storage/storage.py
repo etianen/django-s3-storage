@@ -9,7 +9,6 @@ from tempfile import SpooledTemporaryFile
 from boto import s3
 from boto.s3.connection import S3ResponseError
 
-from django.conf import settings
 from django.core.files.storage import Storage
 from django.core.files.base import File
 from django.contrib.staticfiles.storage import ManifestFilesMixin
@@ -39,13 +38,20 @@ class S3Storage(Storage):
         self.aws_secret_access_key = aws_secret_access_key or settings.AWS_SECRET_ACCESS_KEY
         self.aws_s3_bucket_name = aws_s3_bucket_name or settings.AWS_S3_BUCKET_NAME
         self.aws_s3_bucket_auth = aws_s3_bucket_auth
-        # Connect to S3.
-        self.s3_connection = s3.connect_to_region(
-            self.aws_region,
-            aws_access_key_id = self.aws_access_key_id,
-            aws_secret_access_key = self.aws_secret_access_key,
-            calling_format = "boto.s3.connection.OrdinaryCallingFormat",
-        )
+        # Try to connect to S3 without using aws_access_key_id and aws_secret_access_key
+        # if those are not specified, else use given id and secret.
+        if self.aws_access_key_id == "" and self.aws_secret_access_key == "":
+            self.s3_connection = s3.connect_to_region(
+                self.aws_region,
+                calling_format = "boto.s3.connection.OrdinaryCallingFormat",
+            )
+        else:
+            self.s3_connection = s3.connect_to_region(
+                self.aws_region,
+                aws_access_key_id = self.aws_access_key_id,
+                aws_secret_access_key = self.aws_secret_access_key,
+                calling_format = "boto.s3.connection.OrdinaryCallingFormat",
+            )
         self.bucket = self.s3_connection.get_bucket(self.aws_s3_bucket_name)
         # All done!
         super(S3Storage, self).__init__()

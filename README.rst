@@ -1,3 +1,6 @@
+.. image:: https://travis-ci.org/mtl-git/django-s3-storage.svg
+    :target: https://travis-ci.org/mtl-git/django-s3-storage
+
 django-s3-storage
 =================
 

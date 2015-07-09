@@ -20,6 +20,7 @@ from django_s3_storage.storage import S3Storage, StaticS3Storage
 @skipUnless(settings.AWS_SECRET_ACCESS_KEY, "No settings.AWS_SECRET_ACCESS_KEY supplied.")
 @skipUnless(settings.AWS_S3_BUCKET_NAME, "No settings.AWS_S3_BUCKET_NAME supplied.")
 @skipUnless(settings.AWS_S3_BUCKET_NAME_STATIC, "No settings.AWS_S3_BUCKET_NAME_STATIC supplied.")
+@skipUnless(settings.AWS_S3_MAX_AGE_SECONDS, "No settings.AWS_S3_MAX_AGE_SECONDS supplied.")
 class TestS3Storage(TestCase):
 
     # Lazy settings tests.
@@ -164,7 +165,7 @@ class TestS3Storage(TestCase):
         self.assertIn("?", url)
         # Ensure that the URL is accessible.
         response = self.assertUrlAccessible(url)
-        self.assertEqual(response.headers["cache-control"], "private, max-age=3600")
+        self.assertEqual(response.headers["cache-control"], "private, max-age={max_age}".format(max_age=settings.AWS_S3_MAX_AGE_SECONDS))
 
     def testSecureUrlIsPrivate(self):
         # Generate an insecure URL.

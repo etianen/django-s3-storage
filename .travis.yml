@@ -22,7 +22,7 @@ cache:
   directories:
     - $HOME/.pip-cache/
 install:
-  - travis_retry pip install -r requirements.txt coverage requests --download-cache $HOME/.pip-cache
+  - travis_retry pip install -r tests/requirements.txt --download-cache $HOME/.pip-cache
   - pip install -e . --download-cache $HOME/.pip-cache
 script: 
   - coverage run tests/manage.py test django_s3_storage

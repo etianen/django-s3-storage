@@ -32,12 +32,13 @@ class S3Storage(Storage):
     Python 3, which is kinda lame.
     """
 
-    def __init__(self, aws_region=None, aws_access_key_id=None, aws_secret_access_key=None, aws_s3_bucket_name=None, aws_s3_bucket_auth=True):
+    def __init__(self, aws_region=None, aws_access_key_id=None, aws_secret_access_key=None, aws_s3_bucket_name=None, aws_s3_bucket_auth=True, aws_s3_max_age_seconds=None):
         self.aws_region = aws_region or settings.AWS_REGION
         self.aws_access_key_id = aws_access_key_id or settings.AWS_ACCESS_KEY_ID
         self.aws_secret_access_key = aws_secret_access_key or settings.AWS_SECRET_ACCESS_KEY
         self.aws_s3_bucket_name = aws_s3_bucket_name or settings.AWS_S3_BUCKET_NAME
         self.aws_s3_bucket_auth = aws_s3_bucket_auth
+        self.aws_s3_max_age_seconds = aws_s3_max_age_seconds or settings.AWS_S3_MAX_AGE_SECONDS
         # Try to connect to S3 without using aws_access_key_id and aws_secret_access_key
         # if those are not specified, else use given id and secret.
         if self.aws_access_key_id == "" and self.aws_secret_access_key == "":
@@ -72,7 +73,7 @@ class S3Storage(Storage):
         optimize caching.
         """
         if self.aws_s3_bucket_auth:
-            delta = datetime.timedelta(hours=1)
+            delta = datetime.timedelta(seconds=self.aws_s3_max_age_seconds)
         else:
             delta = datetime.timedelta(days=365)
         return int(delta.total_seconds())

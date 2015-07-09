@@ -38,7 +38,7 @@ class S3Storage(Storage):
         self.aws_secret_access_key = aws_secret_access_key or settings.AWS_SECRET_ACCESS_KEY
         self.aws_s3_bucket_name = aws_s3_bucket_name or settings.AWS_S3_BUCKET_NAME
         self.aws_s3_bucket_auth = aws_s3_bucket_auth
-        self.aws_s3_max_age_seconds = aws_s3_max_age_seconds or settings.AWS_S3_MAX_AGE_SECONDS
+        self.aws_s3_max_age_seconds = aws_s3_max_age_seconds or int(settings.AWS_S3_MAX_AGE_SECONDS)
         # Try to connect to S3 without using aws_access_key_id and aws_secret_access_key
         # if those are not specified, else use given id and secret.
         if self.aws_access_key_id == "" and self.aws_secret_access_key == "":

@@ -5,8 +5,6 @@ python:
   - 3.3
   - 3.4
 env:
-  matrix:
-    - DJANGO=django==1.7.3
   global:
     # AWS_REGION
     - secure: "X1EQYf7UP8ynhObVgeA42ZYUIjcUNI6Lgj0MfE0XsOmBc9BkNlf1wVe3MlCCTVh/l4OI80r0YkxGrvMIGnCDbI9SD7PbAnYSKlMpnKTUjniM6ZkGME4t/wxreMakbwMVbJXnqkR3dDUWxJ+RBeksrwKwqvESOlGsc4ew9K6h1Lw="
@@ -18,13 +16,15 @@ env:
     - secure: "J9RE3MbU26kmTg5y8WwMD0RnW99SxjJvNY4uFfdbDuPlAn6BV9BQuq1qaPYGksdYdJ8WmXhlRKIhjXjZIgvIEzDQ0msPbJ3dU7uCJFrZRVG3I/jbZR0EfcOiWCaDuQU2TDZw5bo4qanTr4nnZpnBVqj0erjytxUkyqIuRAR3xOg="
     # AWS_S3_BUCKET_NAME_STATIC
     - secure: "LY/cIlI4DW9JAYbPK3pztVptQoaLyLU8UX7s1k9+OmJ/jkfJozbsC9PS3VAIQqJVSE78oRjp2tJOkpg1CsOxI6PttplMzoJznNBbQ6G5iCITugV+o0wuCesM31FqMratOWalZjoDMCdv/qb624KOO2o+0XR5EpLUk+/iJmtdtaI="
+    # AWS_S3_MAX_AGE_SECONDS
+    - AWS_S3_MAX_AGE_SECONDS=3600
 matrix:
   fast_finish: true
 cache:
   directories:
     - $HOME/.pip-cache/
 install:
-  - travis_retry pip install $DJANGO coverage requests --download-cache $HOME/.pip-cache
+  - travis_retry pip install -r tests/requirements.txt --download-cache $HOME/.pip-cache
   - pip install -e . --download-cache $HOME/.pip-cache
 script: 
   - coverage run tests/manage.py test django_s3_storage

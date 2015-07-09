@@ -58,5 +58,10 @@ class LazySettings(object):
         name = "AWS_S3_BUCKET_NAME_STATIC",
     )
 
+    AWS_S3_MAX_AGE_SECONDS = LazySetting(
+        name = "AWS_S3_MAX_AGE_SECONDS",
+        default = 60 * 60,  # 1 hours
+    )
+
 
 settings = LazySettings(settings)

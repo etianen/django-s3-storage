@@ -1,3 +1,6 @@
+.. image:: https://travis-ci.org/etianen/django-s3-storage.svg
+    :target: https://travis-ci.org/etianen/django-s3-storage
+
 django-s3-storage
 =================
 
@@ -41,6 +44,9 @@ Available settings
 
     # The S3 bucket name used to store static files.
     AWS_S3_BUCKET_NAME_STATIC = ""
+
+    # The expire time used to access S3 files.
+    AWS_S3_MAX_AGE_SECONDS = 60*60
 
 
 How it works

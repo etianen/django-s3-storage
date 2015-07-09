@@ -15,10 +15,7 @@ setup(
     author_email = "dave@etianen.com",
     url = "https://github.com/etianen/django-s3-storage",
     packages = find_packages(),
-    install_requires = [
-        "django>=1.7",
-        "boto>=2.35",
-    ],
+    install_requires = open('requirements.txt').read().splitlines(),
     classifiers = [
         "Development Status :: 4 - Beta",
         "Environment :: Web Environment",

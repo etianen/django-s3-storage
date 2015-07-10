@@ -6,7 +6,8 @@ python:
   - 3.4
 env:
   matrix:
-    - DJANGO=django==1.7.3
+    - DJANGO=django==1.8.3
+    - DJANGO=django==1.7.9
   global:
     # AWS_REGION
     - secure: "X1EQYf7UP8ynhObVgeA42ZYUIjcUNI6Lgj0MfE0XsOmBc9BkNlf1wVe3MlCCTVh/l4OI80r0YkxGrvMIGnCDbI9SD7PbAnYSKlMpnKTUjniM6ZkGME4t/wxreMakbwMVbJXnqkR3dDUWxJ+RBeksrwKwqvESOlGsc4ew9K6h1Lw="
@@ -24,8 +25,7 @@ cache:
   directories:
     - $HOME/.pip-cache/
 install:
-  - travis_retry pip install $DJANGO coverage requests --download-cache $HOME/.pip-cache
-  - pip install -e . --download-cache $HOME/.pip-cache
+  - travis_retry pip install $DJANGO -e .[test] --download-cache $HOME/.pip-cache
 script:
   - coverage run tests/manage.py test django_s3_storage
 after_script:

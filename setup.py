@@ -4,7 +4,7 @@ from django_s3_storage import __version__
 
 
 version_str = ".".join(str(n) for n in __version__)
-        
+
 
 setup(
     name = "django-s3-storage",
@@ -19,6 +19,12 @@ setup(
         "django>=1.7",
         "boto>=2.35",
     ],
+    extras_require = {
+        "test": [
+            "coverage",
+            "requests",
+        ],
+    },
     classifiers = [
         "Development Status :: 4 - Beta",
         "Environment :: Web Environment",

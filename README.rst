@@ -60,19 +60,28 @@ performance.
 At the moment, files stored on S3 can only be opened in read-only mode.
 
 
+Build status
+------------
+
+This project is built on every push using the Travis-CI service.
+
+image:: https://travis-ci.org/etianen/django-s3-storage.svg?branch=master
+    :target: https://travis-ci.org/etianen/django-s3-storage
+
+
 Support and announcements
 -------------------------
 
 Downloads and bug tracking can be found at the `main project
 website <http://github.com/etianen/django-s3-storage>`_.
 
-    
+
 More information
 ----------------
 
 The django-s3-storage project was developed by Dave Hall. You can get the code
 from the `django-s3-storage project site <http://github.com/etianen/django-s3-storage>`_.
-    
+
 Dave Hall is a freelance web developer, based in Cambridge, UK. You can usually
 find him on the Internet in a number of different places:
 

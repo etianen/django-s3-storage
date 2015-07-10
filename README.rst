@@ -65,7 +65,7 @@ Build status
 
 This project is built on every push using the Travis-CI service.
 
-image:: https://travis-ci.org/etianen/django-s3-storage.svg?branch=master
+.. image:: https://travis-ci.org/etianen/django-s3-storage.svg?branch=master
     :target: https://travis-ci.org/etianen/django-s3-storage
 
 

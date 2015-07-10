@@ -39,8 +39,6 @@ AWS_S3_BUCKET_NAME = os.environ.get("AWS_S3_BUCKET_NAME")
 
 AWS_S3_BUCKET_NAME_STATIC = os.environ.get("AWS_S3_BUCKET_NAME_STATIC")
 
-AWS_S3_MAX_AGE_SECONDS = os.environ.get("AWS_S3_MAX_AGE_SECONDS")
-
 
 # Application definition
 

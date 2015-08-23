@@ -63,5 +63,10 @@ class LazySettings(object):
         default = 60 * 60,  # 1 hours
     )
 
+    CACHE_AUTHENTICATED_URL = LazySetting(
+        name = "CACHE_AUTHENTICATED_URL",
+        default = False,
+    )
+
 
 settings = LazySettings(settings)

@@ -9,6 +9,7 @@ from tempfile import SpooledTemporaryFile
 from boto import s3
 from boto.s3.connection import S3ResponseError
 
+from django.core.cache import cache
 from django.core.files.storage import Storage
 from django.core.files.base import File
 from django.contrib.staticfiles.storage import ManifestFilesMixin
@@ -32,13 +33,14 @@ class S3Storage(Storage):
     Python 3, which is kinda lame.
     """
 
-    def __init__(self, aws_region=None, aws_access_key_id=None, aws_secret_access_key=None, aws_s3_bucket_name=None, aws_s3_bucket_auth=True, aws_s3_max_age_seconds=None):
+    def __init__(self, aws_region=None, aws_access_key_id=None, aws_secret_access_key=None, aws_s3_bucket_name=None, aws_s3_bucket_auth=True, aws_s3_max_age_seconds=None, cache_authenticated=False):
         self.aws_region = aws_region or settings.AWS_REGION
         self.aws_access_key_id = aws_access_key_id or settings.AWS_ACCESS_KEY_ID
         self.aws_secret_access_key = aws_secret_access_key or settings.AWS_SECRET_ACCESS_KEY
         self.aws_s3_bucket_name = aws_s3_bucket_name or settings.AWS_S3_BUCKET_NAME
         self.aws_s3_bucket_auth = aws_s3_bucket_auth
         self.aws_s3_max_age_seconds = aws_s3_max_age_seconds or settings.AWS_S3_MAX_AGE_SECONDS
+        self.cache_authenticated = cache_authenticated or settings.CACHE_AUTHENTICATED_URL
         # Try to connect to S3 without using aws_access_key_id and aws_secret_access_key
         # if those are not specified, else use given id and secret.
         if self.aws_access_key_id == "" and self.aws_secret_access_key == "":
@@ -178,13 +180,22 @@ class S3Storage(Storage):
         Authenticated storage will return a signed URL. Non-authenticated
         storage will return an unsigned URL, which aids in browser caching.
         """
-        return self.s3_connection.generate_url(
+        if self.cache_authenticated and self.aws_s3_bucket_auth:
+            url = cache.get(name)
+            if url is not None:
+                return url
+        url = self.s3_connection.generate_url(
             method = "GET",
             bucket = self.aws_s3_bucket_name,
             key = name,
             expires_in = self._get_max_age(),
             query_auth = self.aws_s3_bucket_auth,
         )
+        # For authenticated storage, cache the result - Helps in browser caching
+        # Cache for half of expiry time, incase the URL is being used by some upstream system
+        if self.cache_authenticated and self.aws_s3_bucket_auth:
+            cache.set(name, url, self._get_max_age() / 2 + 1)
+        return url
 
     def _get_key(self, name, validate=False):
         return self.bucket.get_key(name, validate=validate)

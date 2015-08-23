@@ -45,6 +45,8 @@ Available settings
     # The expire time used to access S3 files.
     AWS_S3_MAX_AGE_SECONDS = 60*60
 
+    # Should cache the signed URL - aids in caching.
+    CACHE_AUTHENTICATED_URL = False
 
 How it works
 ------------

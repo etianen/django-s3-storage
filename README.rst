@@ -25,7 +25,7 @@ Installation
 Available settings
 ------------------
 
-::
+.. code:: python
 
     # The region to connect to when storing files.
     AWS_REGION = "us-east-1"
@@ -39,25 +39,78 @@ Available settings
     # The S3 bucket used to store uploaded files.
     AWS_S3_BUCKET_NAME = ""
 
-    # The S3 bucket name used to store static files.
+    # A prefix to add to the start of all uploaded files.
+    AWS_S3_KEY_PREFIX = ""
+
+    # Whether to enable querystring authentication for uploaded files.
+    AWS_S3_BUCKET_AUTH = True
+
+    # The expire time used to access uploaded files.
+    AWS_S3_MAX_AGE_SECONDS = 60*60  # 1 hour.
+
+    # The S3 bucket used to store static files.
     AWS_S3_BUCKET_NAME_STATIC = ""
 
-    # The expire time used to access S3 files.
-    AWS_S3_MAX_AGE_SECONDS = 60*60
+    # Whether to enable querystring authentication for static files.
+    AWS_S3_BUCKET_AUTH_STATIC = False
+
+    # A prefix to add to the start of all static files.
+    AWS_S3_KEY_PREFIX_STATIC = ""
+
+    # The expire time used to access static files.
+    AWS_S3_MAX_AGE_SECONDS_STATIC = 60*60*24*365  # 1 year.
+
+
+**Important:** If you change any of the ``AWS_S3_BUCKET_AUTH`` or ``AWS_S3_MAX_AGE_SECONDS`` settings, you will need
+to run ``./manage.py s3_sync_meta path.to.your.storage`` before the changes will be applied to existing media files.
 
 
 How it works
 ------------
 
-Uploaded user files are stored on Amazon S3 using the private access control level. When a URL for the file
+By default, uploaded user files are stored on Amazon S3 using the private access control level. When a URL for the file
 is generated, querystring auth with a timeout of 1 hour is used to secure access to the file.
 
-Static files are stored on Amazon S3 using the public access control level and aggressive caching.
+By default, static files are stored on Amazon S3 using the public access control level and aggressive caching.
 
 Text-based files, such as HTML, XML and JSON, are stored using gzip to save space and improve download
 performance.
 
 At the moment, files stored on S3 can only be opened in read-only mode.
+
+
+Optimizing media file caching
+-----------------------------
+
+The default settings assume that user-uploaded file are private. This means that
+they are only accessible via S3 authenticated URLs, which is bad for browser caching.
+
+To make user-uploaded files public, and enable aggressive caching, make the following changes to your ``settings.py``.
+
+.. code:: python
+
+    AWS_S3_BUCKET_AUTH = False
+
+    AWS_S3_MAX_AGE_SECONDS = 60*60*24*365  # 1 year.
+
+**Important:** By making these changes, all user-uploaded files will be public. Ensure they do not contain confidential information.
+
+**Important:** If you change any of the ``AWS_S3_BUCKET_AUTH`` or ``AWS_S3_MAX_AGE_SECONDS`` settings, you will need
+to run ``./manage.py s3_sync_meta path.to.your.storage`` before the changes will be applied to existing media files.
+
+
+Management commands
+-------------------
+
+`s3_sync_meta`
+~~~~~~~~~~~~~~
+
+Syncronizes the meta information on S3 files.
+
+If you change any of the ``AWS_S3_BUCKET_AUTH`` or ``AWS_S3_MAX_AGE_SECONDS`` settings, you will need
+to run this command before the changes will be applied to existing media files. 
+
+Example usage: ``./manage.py s3_sync_meta django.core.files.storage.default_storage``
 
 
 Build status

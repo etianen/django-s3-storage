@@ -4,8 +4,6 @@ from __future__ import unicode_literals
 Settings used by django-s3-storage.
 """
 
-import os
-
 from django.conf import settings
 
 
@@ -50,17 +48,44 @@ class LazySettings(object):
         name = "AWS_SECRET_ACCESS_KEY",
     )
 
+    # Media storage config.
+
     AWS_S3_BUCKET_NAME = LazySetting(
         name = "AWS_S3_BUCKET_NAME",
     )
+
+    AWS_S3_KEY_PREFIX = LazySetting(
+        name = "AWS_S3_KEY_PREFIX",
+    )
+
+    AWS_S3_BUCKET_AUTH = LazySetting(
+        name = "AWS_S3_BUCKET_AUTH",
+        default = True,
+    )
+
+    AWS_S3_MAX_AGE_SECONDS = LazySetting(
+        name = "AWS_S3_MAX_AGE_SECONDS",
+        default = 60 * 60,  # 1 hours.
+    )
+
+    # Static storage config.
 
     AWS_S3_BUCKET_NAME_STATIC = LazySetting(
         name = "AWS_S3_BUCKET_NAME_STATIC",
     )
 
-    AWS_S3_MAX_AGE_SECONDS = LazySetting(
-        name = "AWS_S3_MAX_AGE_SECONDS",
-        default = 60 * 60,  # 1 hours
+    AWS_S3_KEY_PREFIX_STATIC = LazySetting(
+        name = "AWS_S3_KEY_PREFIX_STATIC",
+    )
+
+    AWS_S3_BUCKET_AUTH_STATIC = LazySetting(
+        name = "AWS_S3_BUCKET_AUTH_STATIC",
+        default = False,
+    )
+
+    AWS_S3_MAX_AGE_SECONDS_STATIC = LazySetting(
+        name = "AWS_S3_MAX_AGE_SECONDS_STATIC",
+        default = 60 * 60 * 24 * 365,  # 1 year.
     )
 
 

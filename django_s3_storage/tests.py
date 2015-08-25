@@ -49,10 +49,12 @@ class TestS3Storage(TestCase):
     @classmethod
     def setUpClass(cls):
         super(TestS3Storage, cls).setUpClass()
-        cls.upload_base = posixpath.join("test", uuid.uuid4().hex)
-        cls.storage = S3Storage()
-        cls.insecure_storage = S3Storage(aws_s3_bucket_auth=False)
-        cls.static_storage = StaticS3Storage()
+        cls.key_prefix = uuid.uuid4().hex
+        cls.storage = S3Storage(aws_s3_key_prefix=cls.key_prefix)
+        cls.insecure_storage = S3Storage(aws_s3_key_prefix=cls.key_prefix, aws_s3_bucket_auth=False, aws_s3_max_age_seconds=60*60*24*365)
+        cls.key_prefix_static = uuid.uuid4().hex
+        cls.static_storage = StaticS3Storage(aws_s3_key_prefix=cls.key_prefix_static)
+        cls.upload_base = uuid.uuid4().hex
         cls.file_contents = force_bytes(uuid.uuid4().hex * 1000, "ascii")
         cls.file = ContentFile(cls.file_contents)
         cls.upload_dirname = uuid.uuid4().hex
@@ -220,7 +222,22 @@ class TestS3Storage(TestCase):
             # Clean up the test file.
             self.storage.delete(upload_path)
 
+    # Syncing meta information.
+
+    def testSyncMetaPrivateToPublic(self):
+        url = self.insecure_storage.url(self.upload_path)
+        self.assertUrlInaccessible(url)
+        # Sync the meta to insecure storage.
+        self.insecure_storage.sync_meta()
+        time.sleep(0.2)  # Give it a chance to propagate over S3.
+        # URL is now accessible and well-cached.
+        response = self.assertUrlAccessible(url)
+        self.assertEqual(response.headers["cache-control"], "public, max-age=31536000")
+
     # Static storage tests.
 
     def testStaticS3StorageDefaultsToPublic(self):
         self.assertFalse(self.static_storage.aws_s3_bucket_auth)
+
+    def testStaticS3StorageDefaultsToLongMaxAge(self):
+        self.assertEqual(self.static_storage.aws_s3_max_age_seconds, 60*60*24*365)

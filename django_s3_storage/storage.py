@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-import datetime, mimetypes, gzip
+import posixpath, datetime, mimetypes, gzip
 from io import TextIOBase
 from email.utils import parsedate_tz
 from contextlib import closing
@@ -32,27 +32,23 @@ class S3Storage(Storage):
     Python 3, which is kinda lame.
     """
 
-    def __init__(self, aws_region=None, aws_access_key_id=None, aws_secret_access_key=None, aws_s3_bucket_name=None, aws_s3_bucket_auth=True, aws_s3_max_age_seconds=None):
-        self.aws_region = aws_region or settings.AWS_REGION
-        self.aws_access_key_id = aws_access_key_id or settings.AWS_ACCESS_KEY_ID
-        self.aws_secret_access_key = aws_secret_access_key or settings.AWS_SECRET_ACCESS_KEY
-        self.aws_s3_bucket_name = aws_s3_bucket_name or settings.AWS_S3_BUCKET_NAME
-        self.aws_s3_bucket_auth = aws_s3_bucket_auth
-        self.aws_s3_max_age_seconds = aws_s3_max_age_seconds or settings.AWS_S3_MAX_AGE_SECONDS
-        # Try to connect to S3 without using aws_access_key_id and aws_secret_access_key
-        # if those are not specified, else use given id and secret.
-        if self.aws_access_key_id == "" and self.aws_secret_access_key == "":
-            self.s3_connection = s3.connect_to_region(
-                self.aws_region,
-                calling_format = "boto.s3.connection.OrdinaryCallingFormat",
-            )
-        else:
-            self.s3_connection = s3.connect_to_region(
-                self.aws_region,
-                aws_access_key_id = self.aws_access_key_id,
-                aws_secret_access_key = self.aws_secret_access_key,
-                calling_format = "boto.s3.connection.OrdinaryCallingFormat",
-            )
+    def __init__(self, aws_region=None, aws_access_key_id=None, aws_secret_access_key=None, aws_s3_bucket_name=None, aws_s3_key_prefix=None, aws_s3_bucket_auth=None, aws_s3_max_age_seconds=None):
+        self.aws_region = settings.AWS_REGION if aws_region is None else aws_region
+        self.aws_access_key_id = settings.AWS_ACCESS_KEY_ID if aws_access_key_id is None else aws_access_key_id
+        self.aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY if aws_secret_access_key is None else aws_secret_access_key
+        self.aws_s3_bucket_name = settings.AWS_S3_BUCKET_NAME if aws_s3_bucket_name is None else aws_s3_bucket_name
+        self.aws_s3_key_prefix = settings.AWS_S3_KEY_PREFIX if aws_s3_key_prefix is None else aws_s3_key_prefix
+        self.aws_s3_bucket_auth = settings.AWS_S3_BUCKET_AUTH if aws_s3_bucket_auth is None else aws_s3_bucket_auth
+        self.aws_s3_max_age_seconds = settings.AWS_S3_MAX_AGE_SECONDS if aws_s3_max_age_seconds is None else aws_s3_max_age_seconds
+        # Connect to S3.
+        connection_kwargs = {
+            "calling_format": "boto.s3.connection.OrdinaryCallingFormat",
+        }
+        if self.aws_access_key_id:
+            connection_kwargs["aws_access_key_id"] = self.aws_access_key_id
+        if self.aws_secret_access_key:
+            connection_kwargs["aws_secret_access_key"] = self.aws_secret_access_key
+        self.s3_connection = s3.connect_to_region(self.aws_region, **connection_kwargs)
         self.bucket = self.s3_connection.get_bucket(self.aws_s3_bucket_name)
         # All done!
         super(S3Storage, self).__init__()
@@ -64,19 +60,6 @@ class S3Storage(Storage):
         content_type, encoding = mimetypes.guess_type(name, strict=False)
         content_type = content_type or "application/octet-stream"
         return content_type
-
-    def _get_max_age(self):
-        """
-        Calculates an appropriate expiry time (in seconds) files.
-
-        Files in non-authenticated storage get a very long expiry time to
-        optimize caching.
-        """
-        if self.aws_s3_bucket_auth:
-            delta = datetime.timedelta(seconds=self.aws_s3_max_age_seconds)
-        else:
-            delta = datetime.timedelta(days=365)
-        return int(delta.total_seconds())
 
     def _get_cache_control(self):
         """
@@ -91,7 +74,7 @@ class S3Storage(Storage):
             privacy = "public"
         return force_bytes("{privacy}, max-age={max_age}".format(
             privacy = privacy,
-            max_age = self._get_max_age(),
+            max_age = self.aws_s3_max_age_seconds,
         ))  # Have to use bytes else the space will be percent-encoded. Odd, eh?
 
     def _get_content_encoding(self, content_type):
@@ -171,6 +154,9 @@ class S3Storage(Storage):
         # Return the calculated headers and file.
         return content_type, content_encoding, content
 
+    def _get_key_name(self, name):
+        return posixpath.join(self.aws_s3_key_prefix, name)
+
     def _generate_url(self, name):
         """
         Generates a URL to the given file.
@@ -181,13 +167,16 @@ class S3Storage(Storage):
         return self.s3_connection.generate_url(
             method = "GET",
             bucket = self.aws_s3_bucket_name,
-            key = name,
-            expires_in = self._get_max_age(),
+            key = self._get_key_name(name),
+            expires_in = self.aws_s3_max_age_seconds,
             query_auth = self.aws_s3_bucket_auth,
         )
 
     def _get_key(self, name, validate=False):
-        return self.bucket.get_key(name, validate=validate)
+        return self.bucket.get_key(self._get_key_name(name), validate=validate)
+
+    def _get_canned_acl(self):
+        return "private" if self.aws_s3_bucket_auth else "public-read"
 
     def _open(self, name, mode="rb"):
         if (mode != "rb"):
@@ -223,7 +212,7 @@ class S3Storage(Storage):
         # Save the file.
         self._get_key(name).set_contents_from_file(
             content,
-            policy = "private" if self.aws_s3_bucket_auth else "public-read",
+            policy = self._get_canned_acl(),
             headers = headers,
         )
         # Return the name that was saved.
@@ -249,19 +238,19 @@ class S3Storage(Storage):
         Lists the contents of the specified path, returning a 2-tuple of lists;
         the first item being directories, the second item being files.
         """
+        path = self._get_key_name(path)
         # Normalize directory names.
         if path and not path.endswith("/"):
             path += "/"
         # Look through the paths, parsing out directories and paths.
         files = set()
         dirs = set()
-        for key in self.bucket.list(prefix=path):
+        for key in self.bucket.list(prefix=path, delimiter="/"):
             key_path = key.name[len(path):]
-            key_parts = key_path.split("/")
-            if len(key_parts) == 1:
-                files.add(key_path)
+            if key_path.endswith("/"):
+                dirs.add(key_path[:-1])
             else:
-                dirs.add(key_parts[0])
+                files.add(key_path)
         # All done!
         return list(dirs), list(files)
 
@@ -310,6 +299,40 @@ class S3Storage(Storage):
             timestamp = timezone.make_naive(timestamp, timezone.utc)
         return timestamp
 
+    def sync_meta_iter(self):
+        """
+        Sycnronizes the meta information on all S3 files.
+
+        Returns an iterator of paths that have been syncronized.
+        """
+        def sync_meta_impl(root):
+            dirs, files = self.listdir(root)
+            for filename in files:
+                path = posixpath.join(root, filename)
+                key = self._get_key(path, validate=True)
+                metadata = key.metadata.copy()
+                metadata["Content-Type"] = key.content_type
+                if key.content_encoding:
+                    metadata["Content-Encoding"] = key.content_encoding
+                metadata["Cache-Control"] = self._get_cache_control()
+                # Copy the key.
+                key.copy(key.bucket, key.name, preserve_acl=False, metadata=metadata)
+                # Set the ACL.
+                key.set_canned_acl(self._get_canned_acl())
+                yield path
+            for dirname in dirs:
+                for path in sync_meta_impl(posixpath.join(root, dirname)):
+                    yield path
+        for path in sync_meta_impl(""):
+            yield path
+
+    def sync_meta(self):
+        """
+        Sycnronizes the meta information on all S3 files.
+        """
+        for path in self.sync_meta_iter():
+            pass
+
 
 class StaticS3Storage(S3Storage):
 
@@ -325,8 +348,10 @@ class StaticS3Storage(S3Storage):
     """
 
     def __init__(self, **kwargs):
-        kwargs["aws_s3_bucket_name"] = kwargs.get("aws_s3_bucket_name") or settings.AWS_S3_BUCKET_NAME_STATIC
-        kwargs.setdefault("aws_s3_bucket_auth", False)
+        kwargs.setdefault("aws_s3_bucket_name", settings.AWS_S3_BUCKET_NAME_STATIC)
+        kwargs.setdefault("aws_s3_key_prefix", settings.AWS_S3_KEY_PREFIX_STATIC)
+        kwargs.setdefault("aws_s3_bucket_auth", settings.AWS_S3_BUCKET_AUTH_STATIC)
+        kwargs.setdefault("aws_s3_max_age_seconds", settings.AWS_S3_MAX_AGE_SECONDS_STATIC)
         super(StaticS3Storage, self).__init__(**kwargs)
 
 

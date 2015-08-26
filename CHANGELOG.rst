@@ -2,11 +2,17 @@ django-s3-storage changelog
 ===========================
 
 
+0.9.3
+-----
+
+- Fixed issue with s3_sync_meta management command not being included in source distribution (@etianen).
+
+
 0.9.2
 -----
 
 - Added settings for fine-grained control over browser caching (@etianen).
-- Added settings for adding a prefix to all keys.
+- Added settings for adding a prefix to all keys (@etianen).
 
 
 0.9.1

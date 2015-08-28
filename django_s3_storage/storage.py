@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import posixpath, datetime, mimetypes, gzip
 from io import TextIOBase
 from email.utils import parsedate_tz
-from contextlib import closing
+from contextlib import closing, contextmanager
 from tempfile import SpooledTemporaryFile
 
 from boto import s3
@@ -99,17 +99,22 @@ class S3Storage(Storage):
         """
         return SpooledTemporaryFile(max_size=1024*1024*10)  # 10 MB.
 
-    def _convert_content_to_bytes(self, name, content):
+    @contextmanager
+    def _conditional_convert_content_to_bytes(self, name, content):
         """
         Forces the given text-mode file into a bytes-mode file.
         """
-        temp_file = self._temporary_file()
-        for chunk in content.chunks():
-            temp_file.write(force_bytes(chunk))
-        temp_file.seek(0)
-        return File(temp_file, name)
+        if isinstance(content.file, TextIOBase):
+            with self._temporary_file() as temp_file:
+                for chunk in content.chunks():
+                    temp_file.write(force_bytes(chunk))
+                temp_file.seek(0)
+                yield File(temp_file, name)
+                return
+        yield content
 
-    def _conditional_compress_file(self, name, content):
+    @contextmanager
+    def _conditional_compress_file(self, name, content, content_encoding):
         """
         Attempts to compress the given file.
 
@@ -118,22 +123,24 @@ class S3Storage(Storage):
 
         Returns a tuple of (content_encoding, content).
         """
-        # Ideally, we would do some sort of incremental compression here,
-        # but boto doesn't support uploading a key from an iterator.
-        temp_file = self._temporary_file()
-        with closing(gzip.GzipFile(name, "wb", 9, temp_file)) as zipfile:
-            for chunk in content.chunks():
-                zipfile.write(chunk)
-        # Check if the zipped version is actually smaller!
-        if temp_file.tell() < content.tell():
-            temp_file.seek(0)
-            content = File(temp_file, name)
-            return CONTENT_ENCODING_GZIP, content
-        else:
-            # Haha! Gzip made it bigger.
-            content.seek(0)
-            return None, content
+        if content_encoding == CONTENT_ENCODING_GZIP:
+            # Ideally, we would do some sort of incremental compression here,
+            # but boto doesn't support uploading a key from an iterator.
+            with self._temporary_file() as temp_file:
+                with closing(gzip.GzipFile(name, "wb", 9, temp_file)) as zipfile:
+                    for chunk in content.chunks():
+                        zipfile.write(chunk)
+                # Check if the zipped version is actually smaller!
+                if temp_file.tell() < content.tell():
+                    temp_file.seek(0)
+                    content = File(temp_file, name)
+                    yield content, CONTENT_ENCODING_GZIP
+                    return
+        # Haha! Gzip made it bigger.
+        content.seek(0)
+        yield content, None
 
+    @contextmanager
     def _process_file_for_upload(self, name, content):
         """
         For a given filename and file, returns a tuple of
@@ -145,15 +152,13 @@ class S3Storage(Storage):
         content.seek(0)
         # Calculate the content type.
         content_type = self._get_content_type(name)
-        # Convert files opened in text mode to binary mode.
-        if isinstance(content.file, TextIOBase):
-            content = self._convert_content_to_bytes(name, content)
-        # Attempt content compression.
         content_encoding = self._get_content_encoding(content_type)
-        if content_encoding == CONTENT_ENCODING_GZIP:
-            content_encoding, content = self._conditional_compress_file(name, content)
-        # Return the calculated headers and file.
-        return content_type, content_encoding, content
+        # Convert files opened in text mode to binary mode.
+        with self._conditional_convert_content_to_bytes(name, content) as content:
+            # Attempt content compression.
+            with self._conditional_compress_file(name, content, content_encoding) as (content, content_encoding):
+                # Return the calculated headers and file.
+                yield content, content_type, content_encoding,
 
     def _get_key_name(self, name):
         return posixpath.join(self.aws_s3_key_prefix, name)
@@ -201,23 +206,23 @@ class S3Storage(Storage):
 
     def _save(self, name, content):
         # Calculate the file headers and compression.
-        content_type, content_encoding, content = self._process_file_for_upload(name, content)
-        # Generate file headers.
-        headers = {
-            "Content-Type": content_type,
-            "Cache-Control": self._get_cache_control(),
-        }
-        # Try to compress the file.
-        if content_encoding is not None:
-            headers["Content-Encoding"] = content_encoding
-        # Save the file.
-        self._get_key(name).set_contents_from_file(
-            content,
-            policy = self._get_canned_acl(),
-            headers = headers,
-        )
-        # Return the name that was saved.
-        return name
+        with self._process_file_for_upload(name, content) as (content, content_type, content_encoding):
+            # Generate file headers.
+            headers = {
+                "Content-Type": content_type,
+                "Cache-Control": self._get_cache_control(),
+            }
+            # Try to compress the file.
+            if content_encoding is not None:
+                headers["Content-Encoding"] = content_encoding
+            # Save the file.
+            self._get_key(name).set_contents_from_file(
+                content,
+                policy = self._get_canned_acl(),
+                headers = headers,
+            )
+            # Return the name that was saved.
+            return name
 
     # Subsiduary storage methods.
 

@@ -104,7 +104,8 @@ class S3Storage(Storage):
         Forces the given text-mode file into a bytes-mode file.
         """
         temp_file = self._temporary_file()
-        temp_file.write(force_bytes(content.read()))
+        for chunk in content.chunks():
+            temp_file.write(force_bytes(chunk))
         temp_file.seek(0)
         return File(temp_file, name)
 
@@ -117,14 +118,14 @@ class S3Storage(Storage):
 
         Returns a tuple of (content_encoding, content).
         """
-        content_bytes = content.read()
         # Ideally, we would do some sort of incremental compression here,
         # but boto doesn't support uploading a key from an iterator.
         temp_file = self._temporary_file()
         with closing(gzip.GzipFile(name, "wb", 9, temp_file)) as zipfile:
-            zipfile.write(content_bytes)
+            for chunk in content.chunks():
+                zipfile.write(chunk)
         # Check if the zipped version is actually smaller!
-        if temp_file.tell() < len(content_bytes):
+        if temp_file.tell() < content.tell():
             temp_file.seek(0)
             content = File(temp_file, name)
             return CONTENT_ENCODING_GZIP, content

@@ -3,4 +3,4 @@ Django Amazon S3 file storage.
 """
 
 
-__version__ = (0, 9, 3)
+__version__ = (0, 9, 4)

@@ -2,6 +2,13 @@ django-s3-storage changelog
 ===========================
 
 
+0.9.4
+-----
+
+- Using a temporary file buffer for compressing and encoding large file uploads (@etianen).
+- Eplicitly closing temporary file buffers, rather than relying on the GC (@etianen).
+
+
 0.9.3
 -----
 

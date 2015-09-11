@@ -2,6 +2,12 @@ django-s3-storage changelog
 ===========================
 
 
+0.9.5
+-----
+
+- Compressing javascript files on upload to S3 (@etianen).
+
+
 0.9.4
 -----
 

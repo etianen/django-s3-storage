@@ -87,7 +87,7 @@ class S3Storage(Storage):
         """
         family, subtype = content_type.lower().split("/")
         subtype = subtype.split("+")[-1]
-        if family == "text" or subtype in ("xml", "json", "html"):
+        if family == "text" or subtype in ("xml", "json", "html", "javascript"):
             return CONTENT_ENCODING_GZIP
         return None
 

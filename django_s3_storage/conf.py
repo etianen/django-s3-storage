@@ -73,12 +73,8 @@ class LazySettings(object):
         default = 60 * 60,  # 1 hours.
     )
 
-    AWS_S3_PUBLIC_HOST = LazySetting(
-        name = "AWS_S3_PUBLIC_HOST",
-    )
-
-    AWS_S3_PUBLIC_PROTOCOL = LazySetting(
-        name = "AWS_S3_PUBLIC_PROTOCOL",
+    AWS_S3_PUBLIC_URL = LazySetting(
+        name = "AWS_S3_PUBLIC_URL",
     )
 
     # Static storage config.
@@ -106,12 +102,8 @@ class LazySettings(object):
         default = 60 * 60 * 24 * 365,  # 1 year.
     )
 
-    AWS_S3_PUBLIC_HOST_STATIC = LazySetting(
-        name = "AWS_S3_PUBLIC_HOST_STATIC",
-    )
-
-    AWS_S3_PUBLIC_PROTOCOL_STATIC = LazySetting(
-        name = "AWS_S3_PUBLIC_PROTOCOL_STATIC",
+    AWS_S3_PUBLIC_URL_STATIC = LazySetting(
+        name = "AWS_S3_PUBLIC_URL_STATIC",
     )
 
 

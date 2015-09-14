@@ -6,6 +6,7 @@ from unittest import skipUnless
 
 import requests
 
+from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
 from django.test import TestCase
 from django.utils.encoding import force_bytes, force_text
@@ -233,6 +234,17 @@ class TestS3Storage(TestCase):
         # URL is now accessible and well-cached.
         response = self.assertUrlAccessible(url)
         self.assertEqual(response.headers["cache-control"], "public, max-age=31536000")
+
+    # Public URL tests.
+
+    def testCannotUseBucketAuthWithPublicUrl(self):
+        with self.assertRaises(ImproperlyConfigured) as cm:
+            S3Storage(aws_s3_bucket_auth=True, aws_s3_public_url="http://www.example.com/foo/")
+        self.assertEqual(force_text(cm.exception), "Cannot use AWS_S3_BUCKET_AUTH with AWS_S3_PUBLIC_URL.")
+
+    def testGeneratePublicUrl(self):
+        storage = S3Storage(aws_s3_bucket_auth=False, aws_s3_public_url="http://www.example.com/foo/")
+        self.assertEqual(storage.url("bar.png"), "http://www.example.com/foo/bar.png")
 
     # Static storage tests.
 

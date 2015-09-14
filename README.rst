@@ -51,11 +51,8 @@ Available settings
     # The expire time used to access uploaded files.
     AWS_S3_MAX_AGE_SECONDS = 60*60  # 1 hour.
 
-    # A custom hostname to use for public-facing URLs for uploaded files.
-    AWS_S3_PUBLIC_HOST = ""
-
-    # A custom protocol to use for public-facing URLs for uploaded files.
-    AWS_S3_PUBLIC_PROTOCOL = ""
+    # A custom URL prefix to use for public-facing URLs for uploaded files.
+    AWS_S3_PUBLIC_URL = ""
 
     # The S3 bucket used to store static files.
     AWS_S3_BUCKET_NAME_STATIC = ""
@@ -72,11 +69,8 @@ Available settings
     # The expire time used to access static files.
     AWS_S3_MAX_AGE_SECONDS_STATIC = 60*60*24*365  # 1 year.
 
-    # A custom hostname to use for public-facing URLs for static files.
-    AWS_S3_PUBLIC_HOST_STATIC = ""
-
-    # A custom protocol to use for public-facing URLs for static files.
-    AWS_S3_PUBLIC_PROTOCOL_STATIC = ""
+    # A custom URL prefix to use for public-facing URLs for static files.
+    AWS_S3_PUBLIC_URL_STATIC = ""
 
 
 **Important:** If you change any of the ``AWS_S3_BUCKET_AUTH`` or ``AWS_S3_MAX_AGE_SECONDS`` settings, you will need

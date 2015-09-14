@@ -54,6 +54,11 @@ class LazySettings(object):
         name = "AWS_S3_BUCKET_NAME",
     )
 
+    AWS_S3_CALLING_FORMAT = LazySetting(
+        name = "AWS_S3_CALLING_FORMAT",
+        default = "boto.s3.connection.OrdinaryCallingFormat",
+    )
+
     AWS_S3_KEY_PREFIX = LazySetting(
         name = "AWS_S3_KEY_PREFIX",
     )
@@ -72,6 +77,11 @@ class LazySettings(object):
 
     AWS_S3_BUCKET_NAME_STATIC = LazySetting(
         name = "AWS_S3_BUCKET_NAME_STATIC",
+    )
+
+    AWS_S3_CALLING_FORMAT_STATIC = LazySetting(
+        name = "AWS_S3_CALLING_FORMAT_STATIC",
+        default = "boto.s3.connection.OrdinaryCallingFormat",
     )
 
     AWS_S3_KEY_PREFIX_STATIC = LazySetting(

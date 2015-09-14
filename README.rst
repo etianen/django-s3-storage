@@ -39,6 +39,9 @@ Available settings
     # The S3 bucket used to store uploaded files.
     AWS_S3_BUCKET_NAME = ""
 
+    # The S3 calling format to use to connect to the bucket.
+    AWS_S3_CALLING_FORMAT = "boto.s3.connection.OrdinaryCallingFormat"
+
     # A prefix to add to the start of all uploaded files.
     AWS_S3_KEY_PREFIX = ""
 
@@ -50,6 +53,9 @@ Available settings
 
     # The S3 bucket used to store static files.
     AWS_S3_BUCKET_NAME_STATIC = ""
+
+    # The S3 calling format to use to connect to the static bucket.
+    AWS_S3_CALLING_FORMAT_STATIC = "boto.s3.connection.OrdinaryCallingFormat"
 
     # Whether to enable querystring authentication for static files.
     AWS_S3_BUCKET_AUTH_STATIC = False
@@ -108,7 +114,7 @@ Management commands
 Syncronizes the meta information on S3 files.
 
 If you change any of the ``AWS_S3_BUCKET_AUTH`` or ``AWS_S3_MAX_AGE_SECONDS`` settings, you will need
-to run this command before the changes will be applied to existing media files. 
+to run this command before the changes will be applied to existing media files.
 
 Example usage: ``./manage.py s3_sync_meta django.core.files.storage.default_storage``
 

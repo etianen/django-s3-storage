@@ -15,6 +15,7 @@ from django.contrib.staticfiles.storage import ManifestFilesMixin
 from django.utils.deconstruct import deconstructible
 from django.utils import timezone
 from django.utils.encoding import force_bytes
+from django.utils.six.moves.urllib.parse import urlsplit, urlunsplit
 
 from django_s3_storage.conf import settings
 
@@ -32,7 +33,7 @@ class S3Storage(Storage):
     Python 3, which is kinda lame.
     """
 
-    def __init__(self, aws_region=None, aws_access_key_id=None, aws_secret_access_key=None, aws_s3_bucket_name=None, aws_s3_calling_format=None, aws_s3_key_prefix=None, aws_s3_bucket_auth=None, aws_s3_max_age_seconds=None):
+    def __init__(self, aws_region=None, aws_access_key_id=None, aws_secret_access_key=None, aws_s3_bucket_name=None, aws_s3_calling_format=None, aws_s3_key_prefix=None, aws_s3_bucket_auth=None, aws_s3_max_age_seconds=None, aws_s3_public_host=None, aws_s3_public_protocol=None):
         self.aws_region = settings.AWS_REGION if aws_region is None else aws_region
         self.aws_access_key_id = settings.AWS_ACCESS_KEY_ID if aws_access_key_id is None else aws_access_key_id
         self.aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY if aws_secret_access_key is None else aws_secret_access_key
@@ -41,6 +42,8 @@ class S3Storage(Storage):
         self.aws_s3_key_prefix = settings.AWS_S3_KEY_PREFIX if aws_s3_key_prefix is None else aws_s3_key_prefix
         self.aws_s3_bucket_auth = settings.AWS_S3_BUCKET_AUTH if aws_s3_bucket_auth is None else aws_s3_bucket_auth
         self.aws_s3_max_age_seconds = settings.AWS_S3_MAX_AGE_SECONDS if aws_s3_max_age_seconds is None else aws_s3_max_age_seconds
+        self.aws_s3_public_host = settings.AWS_S3_PUBLIC_HOST if aws_s3_public_host is None else aws_s3_public_host
+        self.aws_s3_public_protocol = settings.AWS_S3_PUBLIC_PROTOCOL if aws_s3_public_protocol is None else aws_s3_public_protocol
         # Connect to S3.
         connection_kwargs = {
             "calling_format": self.aws_s3_calling_format,
@@ -50,7 +53,7 @@ class S3Storage(Storage):
         if self.aws_secret_access_key:
             connection_kwargs["aws_secret_access_key"] = self.aws_secret_access_key
         self.s3_connection = s3.connect_to_region(self.aws_region, **connection_kwargs)
-        self.bucket = self.s3_connection.get_bucket(self.aws_s3_bucket_name)
+        self.bucket = self.s3_connection.get_bucket(self.aws_s3_bucket_name, validate=False)
         # All done!
         super(S3Storage, self).__init__()
 
@@ -272,7 +275,18 @@ class S3Storage(Storage):
         Returns an absolute URL where the file's contents can be accessed
         directly by a Web browser.
         """
-        return self._generate_url(name)
+        url = self._generate_url(name)
+        # Merge in public protocol and domain.
+        scheme, netloc, path, query, fragment = urlsplit(url)
+        url = urlunsplit((
+            self.aws_s3_public_protocol or scheme,
+            self.aws_s3_public_host or netloc,
+            path,
+            query,
+            fragment,
+        ))
+        # All done!
+        return url
 
     def accessed_time(self, name):
         """
@@ -360,6 +374,8 @@ class StaticS3Storage(S3Storage):
         kwargs.setdefault("aws_s3_key_prefix", settings.AWS_S3_KEY_PREFIX_STATIC)
         kwargs.setdefault("aws_s3_bucket_auth", settings.AWS_S3_BUCKET_AUTH_STATIC)
         kwargs.setdefault("aws_s3_max_age_seconds", settings.AWS_S3_MAX_AGE_SECONDS_STATIC)
+        kwargs.setdefault("aws_s3_public_host", settings.AWS_S3_PUBLIC_HOST_STATIC)
+        kwargs.setdefault("aws_s3_public_protocol", settings.AWS_S3_PUBLIC_PROTOCOL_STATIC)
         super(StaticS3Storage, self).__init__(**kwargs)
 
 

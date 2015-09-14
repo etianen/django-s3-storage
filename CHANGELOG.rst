@@ -5,6 +5,7 @@ django-s3-storage changelog
 0.9.6
 -----
 
+- Added settings for customizing S3 public URLs (@etianen).
 - Added settings for customizing S3 calling format (@etianen).
 
 

@@ -125,6 +125,20 @@ to run this command before the changes will be applied to existing media files.
 Example usage: ``./manage.py s3_sync_meta django.core.files.storage.default_storage``
 
 
+How does django-s3-storage compare with django-storages?
+--------------------------------------------------------
+
+The `django-storages-redux <https://github.com/jschneier/django-storages>`_ fork of django-storages appears to be
+the most widely used S3 storage backend for Django. It also supports a variety of other storage backends.
+
+django-s3-storage provides similar features, but only supports S3. It was originally written to support Python 3
+at a time when the future of django-storages was unclear. It's a small, well-tested and self-contained library
+that aims to do one thing very well.
+
+The author of django-s3-storage is not aware of significant differences in functionality with django-storages-redux.
+If you notice some differences, please file an issue!
+
+
 Build status
 ------------
 

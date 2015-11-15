@@ -54,6 +54,9 @@ Available settings
     # A custom URL prefix to use for public-facing URLs for uploaded files.
     AWS_S3_PUBLIC_URL = ""
 
+    # Whether to set the storage class of uploaded files to REDUCED_REDUNDANCY.
+    AWS_S3_REDUCED_REDUNDANCY = False
+
     # The S3 bucket used to store static files.
     AWS_S3_BUCKET_NAME_STATIC = ""
 
@@ -71,6 +74,9 @@ Available settings
 
     # A custom URL prefix to use for public-facing URLs for static files.
     AWS_S3_PUBLIC_URL_STATIC = ""
+
+    # Whether to set the storage class of static files to REDUCED_REDUNDANCY.
+    AWS_S3_REDUCED_REDUNDANCY_STATIC = False
 
 
 **Important:** If you change any of the ``AWS_S3_BUCKET_AUTH`` or ``AWS_S3_MAX_AGE_SECONDS`` settings, you will need

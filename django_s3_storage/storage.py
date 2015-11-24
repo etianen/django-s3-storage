@@ -34,7 +34,7 @@ class S3Storage(Storage):
     Python 3, which is kinda lame.
     """
 
-    def __init__(self, aws_region=None, aws_access_key_id=None, aws_secret_access_key=None, aws_s3_bucket_name=None, aws_s3_calling_format=None, aws_s3_key_prefix=None, aws_s3_bucket_auth=None, aws_s3_max_age_seconds=None, aws_s3_public_url=None):
+    def __init__(self, aws_region=None, aws_access_key_id=None, aws_secret_access_key=None, aws_s3_bucket_name=None, aws_s3_calling_format=None, aws_s3_key_prefix=None, aws_s3_bucket_auth=None, aws_s3_max_age_seconds=None, aws_s3_public_url=None, aws_s3_reduced_redundancy=False):
         self.aws_region = settings.AWS_REGION if aws_region is None else aws_region
         self.aws_access_key_id = settings.AWS_ACCESS_KEY_ID if aws_access_key_id is None else aws_access_key_id
         self.aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY if aws_secret_access_key is None else aws_secret_access_key
@@ -44,6 +44,7 @@ class S3Storage(Storage):
         self.aws_s3_bucket_auth = settings.AWS_S3_BUCKET_AUTH if aws_s3_bucket_auth is None else aws_s3_bucket_auth
         self.aws_s3_max_age_seconds = settings.AWS_S3_MAX_AGE_SECONDS if aws_s3_max_age_seconds is None else aws_s3_max_age_seconds
         self.aws_s3_public_url = settings.AWS_S3_PUBLIC_URL if aws_s3_public_url is None else aws_s3_public_url
+        self.aws_s3_reduced_redundancy = settings.AWS_S3_REDUCED_REDUNDANCY if aws_s3_reduced_redundancy is None else aws_s3_reduced_redundancy
         # Validate args.
         if self.aws_s3_public_url and self.aws_s3_bucket_auth:
             raise ImproperlyConfigured("Cannot use AWS_S3_BUCKET_AUTH with AWS_S3_PUBLIC_URL.")
@@ -227,6 +228,7 @@ class S3Storage(Storage):
                 content,
                 policy = self._get_canned_acl(),
                 headers = headers,
+                reduced_redundancy = self.aws_s3_reduced_redundancy,
             )
             # Return the name that was saved.
             return name
@@ -369,6 +371,7 @@ class StaticS3Storage(S3Storage):
         kwargs.setdefault("aws_s3_bucket_auth", settings.AWS_S3_BUCKET_AUTH_STATIC)
         kwargs.setdefault("aws_s3_max_age_seconds", settings.AWS_S3_MAX_AGE_SECONDS_STATIC)
         kwargs.setdefault("aws_s3_public_url", settings.AWS_S3_PUBLIC_URL_STATIC)
+        kwargs.setdefault("aws_s3_reduced_redundancy", settings.AWS_S3_REDUCED_REDUNDANCY_STATIC)
         super(StaticS3Storage, self).__init__(**kwargs)
 
 

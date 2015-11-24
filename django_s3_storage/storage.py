@@ -80,10 +80,10 @@ class S3Storage(Storage):
             privacy = "private"
         else:
             privacy = "public"
-        return force_bytes("{privacy}, max-age={max_age}".format(
+        return "{privacy},max-age={max_age}".format(
             privacy = privacy,
             max_age = self.aws_s3_max_age_seconds,
-        ))  # Have to use bytes else the space will be percent-encoded. Odd, eh?
+        )
 
     def _get_content_encoding(self, content_type):
         """

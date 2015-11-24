@@ -167,7 +167,7 @@ class TestS3Storage(TestCase):
         self.assertIn("?", url)
         # Ensure that the URL is accessible.
         response = self.assertUrlAccessible(url)
-        self.assertEqual(response.headers["cache-control"], "private, max-age={max_age}".format(max_age=settings.AWS_S3_MAX_AGE_SECONDS))
+        self.assertEqual(response.headers["cache-control"], "private,max-age={max_age}".format(max_age=settings.AWS_S3_MAX_AGE_SECONDS))
 
     def testSecureUrlIsPrivate(self):
         # Generate an insecure URL.
@@ -189,7 +189,7 @@ class TestS3Storage(TestCase):
             self.assertNotIn("?", url)
             # Ensure that the URL is accessible.
             response = self.assertUrlAccessible(url)
-            self.assertEqual(response.headers["cache-control"], "public, max-age=31536000")
+            self.assertEqual(response.headers["cache-control"], "public,max-age=31536000")
         finally:
             # Clean up the test file.
             self.insecure_storage.delete(upload_path)
@@ -233,7 +233,7 @@ class TestS3Storage(TestCase):
         time.sleep(0.2)  # Give it a chance to propagate over S3.
         # URL is now accessible and well-cached.
         response = self.assertUrlAccessible(url)
-        self.assertEqual(response.headers["cache-control"], "public, max-age=31536000")
+        self.assertEqual(response.headers["cache-control"], "public,max-age=31536000")
 
     # Public URL tests.
 

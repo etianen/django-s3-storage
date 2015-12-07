@@ -144,6 +144,12 @@ that aims to do one thing very well.
 The author of django-s3-storage is not aware of significant differences in functionality with django-storages-redux.
 If you notice some differences, please file an issue!
 
+Migration from django-storages(non-redux)
+-----------------------------------------
+
+If your are updating a project that used `django-storages <https://pypi.python.org/pypi/django-storages/1.1.8>`_ just for S3 file storage, migration is trivial.
+
+Follow the installation instructions, replacing 'storages' in ``INSTALLED_APPS``. Be sure to scrutinize the rest of your settings file for changes, most notably ``AWS_S3_BUCKET_NAME`` for ``AWS_STORAGE_BUCKET_NAME``.
 
 Build status
 ------------

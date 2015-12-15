@@ -375,6 +375,7 @@ class StaticS3Storage(S3Storage):
         kwargs.setdefault("aws_s3_max_age_seconds", settings.AWS_S3_MAX_AGE_SECONDS_STATIC)
         kwargs.setdefault("aws_s3_public_url", settings.AWS_S3_PUBLIC_URL_STATIC)
         kwargs.setdefault("aws_s3_reduced_redundancy", settings.AWS_S3_REDUCED_REDUNDANCY_STATIC)
+        kwargs.setdefault("aws_s3_host", settings.AWS_S3_HOST_STATIC)
         super(StaticS3Storage, self).__init__(**kwargs)
 
 

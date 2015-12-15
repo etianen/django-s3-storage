@@ -40,6 +40,10 @@ class LazySettings(object):
         default = "us-east-1",
     )
 
+    AWS_S3_HOST = LazySetting(
+        name = "AWS_S3_HOST",
+    )
+
     AWS_ACCESS_KEY_ID = LazySetting(
         name = "AWS_ACCESS_KEY_ID",
     )

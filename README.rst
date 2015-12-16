@@ -42,6 +42,9 @@ Available settings
     # The S3 calling format to use to connect to the bucket.
     AWS_S3_CALLING_FORMAT = "boto.s3.connection.OrdinaryCallingFormat"
 
+    # The host to connect to (only needed if you are using a non-AWS host)
+    AWS_S3_HOST = ""
+
     # A prefix to add to the start of all uploaded files.
     AWS_S3_KEY_PREFIX = ""
 
@@ -62,6 +65,9 @@ Available settings
 
     # The S3 calling format to use to connect to the static bucket.
     AWS_S3_CALLING_FORMAT_STATIC = "boto.s3.connection.OrdinaryCallingFormat"
+
+    # The host to connect to for static files (only needed if you are using a non-AWS host)
+    AWS_S3_HOST_STATIC = ""
 
     # Whether to enable querystring authentication for static files.
     AWS_S3_BUCKET_AUTH_STATIC = False

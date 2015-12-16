@@ -40,10 +40,6 @@ class LazySettings(object):
         default = "us-east-1",
     )
 
-    AWS_S3_HOST = LazySetting(
-        name = "AWS_S3_HOST",
-    )
-
     AWS_ACCESS_KEY_ID = LazySetting(
         name = "AWS_ACCESS_KEY_ID",
     )
@@ -61,6 +57,10 @@ class LazySettings(object):
     AWS_S3_CALLING_FORMAT = LazySetting(
         name = "AWS_S3_CALLING_FORMAT",
         default = "boto.s3.connection.OrdinaryCallingFormat",
+    )
+
+    AWS_S3_HOST = LazySetting(
+        name = "AWS_S3_HOST",
     )
 
     AWS_S3_KEY_PREFIX = LazySetting(
@@ -94,6 +94,10 @@ class LazySettings(object):
     AWS_S3_CALLING_FORMAT_STATIC = LazySetting(
         name = "AWS_S3_CALLING_FORMAT_STATIC",
         default = "boto.s3.connection.OrdinaryCallingFormat",
+    )
+
+    AWS_S3_HOST_STATIC = LazySetting(
+        name = "AWS_S3_HOST_STATIC",
     )
 
     AWS_S3_KEY_PREFIX_STATIC = LazySetting(

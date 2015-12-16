@@ -1,6 +1,13 @@
 django-s3-storage changelog
 ===========================
 
+0.9.7
+-----
+
+- Added support for non-S3 hosts (@philippbosch, @heldinz).
+- Added support for reduced redundancy storage class (@aaugustin).
+- Minor bugfixes and documentation improvements (@leonsim, @alexkahn, @etianen).
+
 
 0.9.6
 -----

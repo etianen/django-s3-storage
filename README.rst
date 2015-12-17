@@ -139,7 +139,7 @@ Management commands
 
 Syncronizes the meta information on S3 files.
 
-If you change any of the ``AWS_S3_BUCKET_AUTH`` or ``AWS_S3_MAX_AGE_SECONDS`` settings, you will need
+If you change any of the ``AWS_S3_BUCKET_AUTH``, ``AWS_S3_MAX_AGE_SECONDS``, or ``AWS_S3_METADATA`` settings, you will need
 to run this command before the changes will be applied to existing media files.
 
 Example usage: ``./manage.py s3_sync_meta django.core.files.storage.default_storage``

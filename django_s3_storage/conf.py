@@ -85,6 +85,11 @@ class LazySettings(object):
         name = "AWS_S3_REDUCED_REDUNDANCY",
     )
 
+    AWS_S3_METADATA = LazySetting(
+        name = "AWS_S3_METADATA",
+        default = {},
+    )
+
     # Static storage config.
 
     AWS_S3_BUCKET_NAME_STATIC = LazySetting(
@@ -120,6 +125,11 @@ class LazySettings(object):
 
     AWS_S3_REDUCED_REDUNDANCY_STATIC = LazySetting(
         name = "AWS_S3_REDUCED_REDUNDANCY_STATIC",
+    )
+
+    AWS_S3_METADATA_STATIC = LazySetting(
+        name = "AWS_S3_METADATA_STATIC",
+        default = {},
     )
 
 

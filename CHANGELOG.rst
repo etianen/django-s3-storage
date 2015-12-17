@@ -1,6 +1,12 @@
 django-s3-storage changelog
 ===========================
 
+0.9.8
+-----
+
+- Added support for custom metadata associated with a file (@etianen).
+
+
 0.9.7
 -----
 

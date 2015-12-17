@@ -52,6 +52,10 @@ class TestS3Storage(TestCase):
         super(TestS3Storage, cls).setUpClass()
         cls.key_prefix = uuid.uuid4().hex
         cls.storage = S3Storage(aws_s3_key_prefix=cls.key_prefix)
+        cls.storage_metadata = S3Storage(aws_s3_key_prefix=cls.key_prefix, aws_s3_metadata={
+            "content-disposition": "attachment",
+            "foo": "bar",
+        })
         cls.insecure_storage = S3Storage(aws_s3_key_prefix=cls.key_prefix, aws_s3_bucket_auth=False, aws_s3_max_age_seconds=60*60*24*365)
         cls.key_prefix_static = uuid.uuid4().hex
         cls.static_storage = StaticS3Storage(aws_s3_key_prefix=cls.key_prefix_static)
@@ -223,6 +227,23 @@ class TestS3Storage(TestCase):
             # Clean up the test file.
             self.storage.delete(upload_path)
 
+    # Uploading with custom metadata.
+
+    def testUploadWithMetadata(self):
+        # Make a new non-gzipped file.
+        upload_path = self.generateUploadPath()
+        self.saveTestFile(upload_path, storage=self.storage_metadata)
+        try:
+            self.assertTrue(self.storage_metadata.exists(upload_path))
+            # Generate a URL.
+            url = self.storage_metadata.url(upload_path)
+            # Ensure that the URL is accessible.
+            response = self.assertUrlAccessible(url)
+            self.assertEqual(response.headers["content-disposition"], "attachment")
+        finally:
+            # Clean up the test file.
+            self.storage.delete(upload_path)
+
     # Syncing meta information.
 
     def testSyncMetaPrivateToPublic(self):
@@ -234,6 +255,19 @@ class TestS3Storage(TestCase):
         # URL is now accessible and well-cached.
         response = self.assertUrlAccessible(url)
         self.assertEqual(response.headers["cache-control"], "public,max-age=31536000")
+
+    def testSyncMetadataCustom(self):
+        # Check metadata not synced.
+        url = self.storage.url(self.upload_path)
+        response = self.assertUrlAccessible(url)
+        self.assertEqual(response.headers.get("content-disposition", ""), "")
+        # Sync the meta.
+        self.storage_metadata.sync_meta()
+        time.sleep(0.2)  # Give it a chance to propagate over S3.
+        # Metadata should have been synced.
+        url = self.storage_metadata.url(self.upload_path)
+        response = self.assertUrlAccessible(url)
+        self.assertEqual(response.headers["content-disposition"], "attachment")
 
     # Public URL tests.
 

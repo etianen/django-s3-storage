@@ -61,6 +61,7 @@ Available settings
     AWS_S3_REDUCED_REDUNDANCY = False
 
     # A dictionary of additional metadata to set on the uploaded files.
+    # If the value is a callable, it will be called with the path of the file on S3.
     AWS_S3_METADATA = {}
 
     # The S3 bucket used to store static files.
@@ -88,6 +89,7 @@ Available settings
     AWS_S3_REDUCED_REDUNDANCY_STATIC = False
 
     # A dictionary of additional metadata to set on the static files.
+    # If the value is a callable, it will be called with the path of the file on S3.
     AWS_S3_METADATA_STATIC = {}
 
 

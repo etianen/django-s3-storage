@@ -53,8 +53,8 @@ class TestS3Storage(TestCase):
         cls.key_prefix = uuid.uuid4().hex
         cls.storage = S3Storage(aws_s3_key_prefix=cls.key_prefix)
         cls.storage_metadata = S3Storage(aws_s3_key_prefix=cls.key_prefix, aws_s3_metadata={
-            "content-disposition": "attachment",
-            "foo": "bar",
+            "Content-Disposition": lambda name: "attachment;filename={}".format(posixpath.basename(name)),
+            "Content-Language": "fr",
         })
         cls.insecure_storage = S3Storage(aws_s3_key_prefix=cls.key_prefix, aws_s3_bucket_auth=False, aws_s3_max_age_seconds=60*60*24*365)
         cls.key_prefix_static = uuid.uuid4().hex
@@ -239,7 +239,8 @@ class TestS3Storage(TestCase):
             url = self.storage_metadata.url(upload_path)
             # Ensure that the URL is accessible.
             response = self.assertUrlAccessible(url)
-            self.assertEqual(response.headers["content-disposition"], "attachment")
+            self.assertEqual(response.headers["content-disposition"], "attachment;filename={}".format(posixpath.basename(upload_path)))
+            self.assertEqual(response.headers["content-language"], "fr")
         finally:
             # Clean up the test file.
             self.storage.delete(upload_path)
@@ -261,13 +262,15 @@ class TestS3Storage(TestCase):
         url = self.storage.url(self.upload_path)
         response = self.assertUrlAccessible(url)
         self.assertEqual(response.headers.get("content-disposition", ""), "")
+        self.assertEqual(response.headers.get("content-language", ""), "")
         # Sync the meta.
         self.storage_metadata.sync_meta()
         time.sleep(0.2)  # Give it a chance to propagate over S3.
         # Metadata should have been synced.
         url = self.storage_metadata.url(self.upload_path)
         response = self.assertUrlAccessible(url)
-        self.assertEqual(response.headers["content-disposition"], "attachment")
+        self.assertEqual(response.headers["content-disposition"], "attachment;filename={}".format(posixpath.basename(self.upload_path)))
+        self.assertEqual(response.headers["content-language"], "fr")
 
     # Public URL tests.
 

@@ -196,6 +196,13 @@ class S3Storage(Storage):
     def _get_canned_acl(self):
         return "private" if self.aws_s3_bucket_auth else "public-read"
 
+    def _get_metadata(self, name):
+        return {
+            key: value(name) if callable(value) else value
+            for key, value
+            in self.aws_s3_metadata.items()
+        }
+
     def _open(self, name, mode="rb"):
         if (mode != "rb"):
             raise ValueError("S3 files can only be opened in read-only mode")
@@ -224,10 +231,11 @@ class S3Storage(Storage):
                 "Content-Type": content_type,
                 "Cache-Control": self._get_cache_control(),
             }
-            headers.update(self.aws_s3_metadata)
             # Try to compress the file.
             if content_encoding is not None:
                 headers["Content-Encoding"] = content_encoding
+            # Add additional metadata.
+            headers.update(self._get_metadata(name))
             # Save the file.
             self._get_key(name).set_contents_from_file(
                 content,
@@ -337,7 +345,7 @@ class S3Storage(Storage):
                 if key.content_encoding:
                     metadata["Content-Encoding"] = key.content_encoding
                 metadata["Cache-Control"] = self._get_cache_control()
-                metadata.update(self.aws_s3_metadata)
+                metadata.update(self._get_metadata(path))
                 # Copy the key.
                 key.copy(key.bucket, key.name, preserve_acl=False, metadata=metadata)
                 # Set the ACL.

@@ -259,7 +259,11 @@ class S3Storage(Storage):
         Returns True if a file referenced by the given name already exists in the
         storage system, or False if the name is available for a new file.
         """
-        return self._get_key(name).exists()
+        # We also need to check for directory existence, so we'll list matching
+        # keys and return success if any match.
+        for _ in self.bucket.list(prefix=self._get_key_name(name)):
+            return True
+        return False
 
     def listdir(self, path):
         """

@@ -137,6 +137,9 @@ class TestS3Storage(TestCase):
         self.assertTrue(self.storage.exists(self.upload_path))
         self.assertFalse(self.storage.exists(self.generateUploadPath()))
 
+    def testDirExists(self):
+        self.assertTrue(self.storage.exists(""))
+
     def testDelete(self):
         # Make a new file to delete.
         upload_path = self.generateUploadPath()

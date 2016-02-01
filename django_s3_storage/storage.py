@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-import posixpath, datetime, mimetypes, gzip
+import posixpath, datetime, mimetypes, gzip, os
 from io import TextIOBase
 from email.utils import parsedate_tz
 from contextlib import closing, contextmanager
@@ -173,7 +173,7 @@ class S3Storage(Storage):
                 yield content, content_type, content_encoding,
 
     def _get_key_name(self, name):
-        return posixpath.join(self.aws_s3_key_prefix, name)
+        return posixpath.join(self.aws_s3_key_prefix, name.replace(os.sep, "/"))
 
     def _generate_url(self, name):
         """

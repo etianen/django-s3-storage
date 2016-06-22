@@ -64,6 +64,9 @@ Available settings
     # If the value is a callable, it will be called with the path of the file on S3.
     AWS_S3_METADATA = {}
 
+    # Whether to enable gzip compression for uploaded files.
+    AWS_S3_GZIP = True
+
     # The S3 bucket used to store static files.
     AWS_S3_BUCKET_NAME_STATIC = ""
 
@@ -91,6 +94,9 @@ Available settings
     # A dictionary of additional metadata to set on the static files.
     # If the value is a callable, it will be called with the path of the file on S3.
     AWS_S3_METADATA_STATIC = {}
+
+    # Whether to enable gzip compression for static files.
+    AWS_S3_GZIP_STATIC = True
 
 
 **Important:** If you change any of the ``AWS_S3_BUCKET_AUTH`` or ``AWS_S3_MAX_AGE_SECONDS`` settings, you will need

@@ -248,8 +248,21 @@ class TestS3Storage(TestCase):
             # Clean up the test file.
             self.storage.delete(upload_path)
 
-    # Syncing meta information.
+    def testUploadWithRelativePath(self):
+        upload_path = self.generateUploadBasename()
+        relative_upload_path = './%s' % upload_path
+        self.saveTestFile(upload_path=relative_upload_path)
+        try:
+            self.assertTrue(self.storage.exists(relative_upload_path))
+            url = self.storage.url(relative_upload_path)
+            # Ensure that the URL is accessible.
+            self.assertNotIn(relative_upload_path, url)
+            self.assertIn(upload_path, url)
+            self.assertUrlAccessible(url)
+        finally:
+            self.storage.delete(upload_path)
 
+    # Syncing meta information.
     def testSyncMetaPrivateToPublic(self):
         url = self.insecure_storage.url(self.upload_path)
         self.assertUrlInaccessible(url)

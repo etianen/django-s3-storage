@@ -1,6 +1,13 @@
 django-s3-storage changelog
 ===========================
 
+0.9.9
+-----
+
+- Added settings for disabling gzip compression (@leonsmith, @bartvds)
+- Bug fix for relative upload paths (@leonsmith)
+
+
 0.9.8
 -----
 

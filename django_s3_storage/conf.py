@@ -90,6 +90,11 @@ class LazySettings(object):
         default = {},
     )
 
+    AWS_S3_GZIP = LazySetting(
+        name = "AWS_S3_GZIP",
+        default = True
+    )
+
     # Static storage config.
 
     AWS_S3_BUCKET_NAME_STATIC = LazySetting(
@@ -132,6 +137,10 @@ class LazySettings(object):
         default = {},
     )
 
+    AWS_S3_GZIP_STATIC = LazySetting(
+        name = "AWS_S3_GZIP_STATIC",
+        default = True
+    )
 
 
 settings = LazySettings(settings)

@@ -1,6 +1,15 @@
 django-s3-storage changelog
 ===========================
 
+0.9.9
+-----
+
+- Added settings for disabling gzip compression (@leonsmith)
+- Bug fix for relative upload paths (@leonsmith)
+- Bug fix for detecting empty directories (@etianen).
+- Automatic conversion of windows path separators on upload (@etianen).
+
+
 0.9.8
 -----
 

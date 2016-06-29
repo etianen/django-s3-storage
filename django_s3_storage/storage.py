@@ -173,14 +173,16 @@ class S3Storage(Storage):
                 # Return the calculated headers and file.
                 yield content, content_type, content_encoding,
 
+    def get_valid_name(self, name):
+        return posixpath.normpath(name.replace(os.sep, "/"))
+
     def _get_key_name(self, name):
         """
         Builds the key name we use to fetch this file form s3
 
         Normalises the path at the end as name can be a relative url
         """
-        name = posixpath.join(self.aws_s3_key_prefix, name.replace(os.sep, "/"))
-        return posixpath.normpath(name)
+        return posixpath.join(self.aws_s3_key_prefix, name)
 
     def _generate_url(self, name):
         """

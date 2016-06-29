@@ -44,8 +44,9 @@ class TestS3Storage(TestCase):
 
     @classmethod
     def saveTestFile(cls, upload_path=None, storage=None, file=None):
-        (storage or cls.storage).save(upload_path or cls.upload_path, file or cls.file)
+        saved_path = (storage or cls.storage).save(upload_path or cls.upload_path, file or cls.file)
         time.sleep(0.2)  # Give it a chance to propagate over S3.
+        return saved_path
 
     @classmethod
     def setUpClass(cls):
@@ -250,14 +251,11 @@ class TestS3Storage(TestCase):
 
     def testUploadWithRelativePath(self):
         upload_path = self.generateUploadBasename()
-        relative_upload_path = './%s' % upload_path
-        self.saveTestFile(upload_path=relative_upload_path)
+        relative_upload_path = "./{}".format(upload_path)
+        saved_path = self.saveTestFile(upload_path=relative_upload_path)
         try:
-            self.assertTrue(self.storage.exists(relative_upload_path))
-            url = self.storage.url(relative_upload_path)
-            # Ensure that the URL is accessible.
-            self.assertNotIn(relative_upload_path, url)
-            self.assertIn(upload_path, url)
+            self.assertTrue(self.storage.exists(saved_path))
+            url = self.storage.url(saved_path)
             self.assertUrlAccessible(url)
         finally:
             self.storage.delete(upload_path)

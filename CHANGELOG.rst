@@ -1,6 +1,13 @@
 django-s3-storage changelog
 ===========================
 
+
+0.9.10
+------
+
+- Fixing regression with accessing legacy S3 keys with non-normalized path names (@etianen).
+
+
 0.9.9
 -----
 

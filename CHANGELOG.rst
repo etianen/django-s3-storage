@@ -1,6 +1,11 @@
 django-s3-storage changelog
 ===========================
 
+In development
+--------------
+
+- Added support for server-side encryption (@aaugustin).
+
 
 0.9.10
 ------

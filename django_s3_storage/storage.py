@@ -34,7 +34,7 @@ class S3Storage(Storage):
     Python 3, which is kinda lame.
     """
 
-    def __init__(self, aws_region=None, aws_access_key_id=None, aws_secret_access_key=None, aws_s3_bucket_name=None, aws_s3_calling_format=None, aws_s3_key_prefix=None, aws_s3_bucket_auth=None, aws_s3_max_age_seconds=None, aws_s3_public_url=None, aws_s3_reduced_redundancy=False, aws_s3_host=None, aws_s3_metadata=None, aws_s3_gzip=None):
+    def __init__(self, aws_region=None, aws_access_key_id=None, aws_secret_access_key=None, aws_s3_bucket_name=None, aws_s3_calling_format=None, aws_s3_key_prefix=None, aws_s3_bucket_auth=None, aws_s3_max_age_seconds=None, aws_s3_public_url=None, aws_s3_reduced_redundancy=False, aws_s3_host=None, aws_s3_metadata=None, aws_s3_encrypt_key=None, aws_s3_gzip=None):
         self.aws_region = settings.AWS_REGION if aws_region is None else aws_region
         self.aws_access_key_id = settings.AWS_ACCESS_KEY_ID if aws_access_key_id is None else aws_access_key_id
         self.aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY if aws_secret_access_key is None else aws_secret_access_key
@@ -47,6 +47,7 @@ class S3Storage(Storage):
         self.aws_s3_reduced_redundancy = settings.AWS_S3_REDUCED_REDUNDANCY if aws_s3_reduced_redundancy is None else aws_s3_reduced_redundancy
         self.aws_s3_host = settings.AWS_S3_HOST if aws_s3_host is None else aws_s3_host
         self.aws_s3_metadata = settings.AWS_S3_METADATA if aws_s3_metadata is None else aws_s3_metadata
+        self.aws_s3_encrypt_key = settings.AWS_S3_ENCRYPT_KEY if aws_s3_encrypt_key is None else aws_s3_encrypt_key
         self.aws_s3_gzip = settings.AWS_S3_GZIP if aws_s3_gzip is None else aws_s3_gzip
         # Validate args.
         if self.aws_s3_public_url and self.aws_s3_bucket_auth:
@@ -251,6 +252,7 @@ class S3Storage(Storage):
                 policy = self._get_canned_acl(),
                 headers = headers,
                 reduced_redundancy = self.aws_s3_reduced_redundancy,
+                encrypt_key = self.aws_s3_encrypt_key,
             )
             # Return the name that was saved.
             return name
@@ -360,7 +362,13 @@ class S3Storage(Storage):
                 metadata["Cache-Control"] = self._get_cache_control()
                 metadata.update(self._get_metadata(path))
                 # Copy the key.
-                key.copy(key.bucket, key.name, preserve_acl=False, metadata=metadata)
+                key.copy(
+                    key.bucket,
+                    key.name,
+                    preserve_acl=False,
+                    metadata=metadata,
+                    encrypt_key=self.aws_s3_encrypt_key,
+                )
                 # Set the ACL.
                 key.set_canned_acl(self._get_canned_acl())
                 yield path

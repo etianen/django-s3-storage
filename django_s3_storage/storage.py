@@ -270,7 +270,7 @@ class S3Storage(Storage):
         """
         # We also need to check for directory existence, so we'll list matching
         # keys and return success if any match.
-        for _ in self.bucket.list(prefix=self._get_key_name(name)):
+        for _ in self.bucket.list(prefix=self._get_key_name(name), delimiter="/"):
             return True
         return False
 

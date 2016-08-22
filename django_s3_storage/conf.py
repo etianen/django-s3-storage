@@ -90,6 +90,11 @@ class LazySettings(object):
         default = {},
     )
 
+    AWS_S3_ENCRYPT_KEY = LazySetting(
+        name = "AWS_S3_ENCRYPT_KEY",
+        default = False,
+    )
+
     AWS_S3_GZIP = LazySetting(
         name = "AWS_S3_GZIP",
         default = True
@@ -135,6 +140,11 @@ class LazySettings(object):
     AWS_S3_METADATA_STATIC = LazySetting(
         name = "AWS_S3_METADATA_STATIC",
         default = {},
+    )
+
+    AWS_S3_ENCRYPT_KEY_STATIC = LazySetting(
+        name = "AWS_S3_ENCRYPT_KEY_STATIC",
+        default = False,
     )
 
     AWS_S3_GZIP_STATIC = LazySetting(

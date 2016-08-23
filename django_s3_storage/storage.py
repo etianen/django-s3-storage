@@ -63,6 +63,8 @@ class S3Storage(Storage):
         if self.aws_s3_host:
             connection_kwargs["host"] = self.aws_s3_host
         self.s3_connection = s3.connect_to_region(self.aws_region, **connection_kwargs)
+        if not self.aws_s3_bucket_auth:
+            self.s3_connection.provider.security_token = ''
         self.bucket = self.s3_connection.get_bucket(self.aws_s3_bucket_name, validate=False)
         # All done!
         super(S3Storage, self).__init__()

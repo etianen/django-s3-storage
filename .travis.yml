@@ -22,9 +22,6 @@ env:
     - secure: "LY/cIlI4DW9JAYbPK3pztVptQoaLyLU8UX7s1k9+OmJ/jkfJozbsC9PS3VAIQqJVSE78oRjp2tJOkpg1CsOxI6PttplMzoJznNBbQ6G5iCITugV+o0wuCesM31FqMratOWalZjoDMCdv/qb624KOO2o+0XR5EpLUk+/iJmtdtaI="
 matrix:
   fast_finish: true
-  exclude:
-    - python: 3.5
-      env: DJANGO=django==1.7.11
 cache:
   directories:
     - $HOME/.cache/pip

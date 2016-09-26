@@ -8,7 +8,7 @@ env:
   matrix:
     - DJANGO=django==1.8.14
     - DJANGO=django==1.9.9
-    - DJANGO=django==1.10
+    - DJANGO=django==1.10.1
   global:
     # AWS_REGION
     - secure: "X1EQYf7UP8ynhObVgeA42ZYUIjcUNI6Lgj0MfE0XsOmBc9BkNlf1wVe3MlCCTVh/l4OI80r0YkxGrvMIGnCDbI9SD7PbAnYSKlMpnKTUjniM6ZkGME4t/wxreMakbwMVbJXnqkR3dDUWxJ+RBeksrwKwqvESOlGsc4ew9K6h1Lw="

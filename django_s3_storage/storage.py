@@ -31,13 +31,13 @@ class S3File(File):
     """
 
     def __init__(self, file, name, storage):
-        super().__init__(file, name)
+        super(S3File, self).__init__(file, name)
         self._storage = storage
 
     def open(self, mode=None):
         if self.closed:
             self.file = self._storage.open(self.name, mode or "rb").file
-        return super().open(mode)
+        return super(S3File, self).open(mode)
 
 
 @deconstructible

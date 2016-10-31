@@ -1,10 +1,12 @@
 django-s3-storage changelog
 ===========================
 
-In development
---------------
+0.9.11
+------
 
 - Added support for server-side encryption (@aaugustin).
+- Allowed S3 files to be re-opened once closed (@etianen).
+- Bugfixes (@Moraga, @etianen).
 
 
 0.9.10

@@ -111,6 +111,12 @@ class TestS3Storage(TestCase):
     def testOpen(self):
         self.assertEqual(self.storage.open(self.upload_path).read(), self.file_contents)
 
+    def testReOpen(self):
+        handle = self.storage.open(self.upload_path)
+        handle.close()
+        handle.open()
+        self.assertEqual(handle.read(), self.file_contents)
+
     def testCannotOpenInWriteMode(self):
         with self.assertRaises(ValueError) as cm:
             self.storage.open(self.upload_path, "wb")

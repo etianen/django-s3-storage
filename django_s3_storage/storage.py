@@ -24,6 +24,22 @@ from django_s3_storage.conf import settings
 CONTENT_ENCODING_GZIP = "gzip"
 
 
+class S3File(File):
+
+    """
+    A file returned from Amazon S3.
+    """
+
+    def __init__(self, file, name, storage):
+        super().__init__(file, name)
+        self._storage = storage
+
+    def open(self, mode=None):
+        if self.closed:
+            self.file = self._storage.open(self.name, mode or "rb").file
+        return super().open(mode)
+
+
 @deconstructible
 class S3Storage(Storage):
 
@@ -216,7 +232,7 @@ class S3Storage(Storage):
         }
 
     def _open(self, name, mode="rb"):
-        if (mode != "rb"):
+        if mode != "rb":
             raise ValueError("S3 files can only be opened in read-only mode")
         # Load the key into a temporary file. It would be nice to stream the
         # content, but S3 doesn't support seeking, which is sometimes needed.
@@ -233,7 +249,7 @@ class S3Storage(Storage):
         if key.content_encoding == CONTENT_ENCODING_GZIP:
             content = gzip.GzipFile(name, "rb", fileobj=content)
         # All done!
-        return File(content, name)
+        return S3File(content, name, self)
 
     def _save(self, name, content):
         # Calculate the file headers and compression.

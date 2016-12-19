@@ -1,6 +1,12 @@
 django-s3-storage changelog
 ===========================
 
+0.9.12
+------
+
+- Bug fix for listdir() returning empty file names (@aaugustin).
+
+
 0.9.11
 ------
 

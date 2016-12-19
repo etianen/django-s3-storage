@@ -310,7 +310,8 @@ class S3Storage(Storage):
             key_path = key.name[len(path):]
             if key_path.endswith("/"):
                 dirs.add(key_path[:-1])
-            else:
+            # Remove the directory itself from the output of bucket.list().
+            elif key_path:
                 files.add(key_path)
         # All done!
         return list(dirs), list(files)

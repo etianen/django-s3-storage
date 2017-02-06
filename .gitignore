@@ -13,3 +13,4 @@ docs/_build
 *.sqlite3
 .coverage
 *.egg-info
+.tox

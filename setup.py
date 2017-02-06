@@ -7,25 +7,19 @@ version_str = ".".join(str(n) for n in __version__)
 
 
 setup(
-    name = "django-s3-storage",
-    version = version_str,
-    license = "BSD",
-    description = "Django Amazon S3 file storage.",
-    author = "Dave Hall",
-    author_email = "dave@etianen.com",
-    url = "https://github.com/etianen/django-s3-storage",
-    packages = find_packages(),
-    install_requires = [
+    name="django-s3-storage",
+    version=version_str,
+    license="BSD",
+    description="Django Amazon S3 file storage.",
+    author="Dave Hall",
+    author_email="dave@etianen.com",
+    url="https://github.com/etianen/django-s3-storage",
+    packages=find_packages(),
+    install_requires=[
         "django>=1.7",
         "boto>=2.35",
     ],
-    extras_require = {
-        "test": [
-            "coverage",
-            "requests",
-        ],
-    },
-    classifiers = [
+    classifiers=[
         "Development Status :: 4 - Beta",
         "Environment :: Web Environment",
         "Intended Audience :: Developers",

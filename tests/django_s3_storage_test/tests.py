@@ -1,26 +1,19 @@
 # coding=utf-8
 from __future__ import unicode_literals
-
-import posixpath, uuid, datetime, time
-from unittest import skipUnless
-
+import datetime
+import posixpath
+import time
+import uuid
 import requests
-
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
 from django.test import TestCase
 from django.utils.encoding import force_bytes, force_text
 from django.utils import timezone
-
 from django_s3_storage.conf import settings
 from django_s3_storage.storage import S3Storage, StaticS3Storage
 
 
-@skipUnless(settings.AWS_REGION, "No settings.AWS_REGION supplied.")
-@skipUnless(settings.AWS_ACCESS_KEY_ID, "No settings.AWS_ACCESS_KEY_ID supplied.")
-@skipUnless(settings.AWS_SECRET_ACCESS_KEY, "No settings.AWS_SECRET_ACCESS_KEY supplied.")
-@skipUnless(settings.AWS_S3_BUCKET_NAME, "No settings.AWS_S3_BUCKET_NAME supplied.")
-@skipUnless(settings.AWS_S3_BUCKET_NAME_STATIC, "No settings.AWS_S3_BUCKET_NAME_STATIC supplied.")
 class TestS3Storage(TestCase):
 
     # Lazy settings tests.
@@ -57,7 +50,11 @@ class TestS3Storage(TestCase):
             "Content-Disposition": lambda name: "attachment;filename={}".format(posixpath.basename(name)),
             "Content-Language": "fr",
         })
-        cls.insecure_storage = S3Storage(aws_s3_key_prefix=cls.key_prefix, aws_s3_bucket_auth=False, aws_s3_max_age_seconds=60*60*24*365)
+        cls.insecure_storage = S3Storage(
+            aws_s3_key_prefix=cls.key_prefix,
+            aws_s3_bucket_auth=False,
+            aws_s3_max_age_seconds=60*60*24*365,
+        )
         cls.key_prefix_static = uuid.uuid4().hex
         cls.static_storage = StaticS3Storage(aws_s3_key_prefix=cls.key_prefix_static)
         cls.upload_base = uuid.uuid4().hex
@@ -127,7 +124,7 @@ class TestS3Storage(TestCase):
         with self.assertRaises(IOError) as cm:
             self.storage.open(upload_path)
         self.assertEqual(force_text(cm.exception), "File {name} does not exist".format(
-            name = upload_path,
+            name=upload_path,
         ))
 
     def testSaveTextModeFile(self):
@@ -181,7 +178,9 @@ class TestS3Storage(TestCase):
         self.assertIn("?", url)
         # Ensure that the URL is accessible.
         response = self.assertUrlAccessible(url)
-        self.assertEqual(response.headers["cache-control"], "private,max-age={max_age}".format(max_age=settings.AWS_S3_MAX_AGE_SECONDS))
+        self.assertEqual(response.headers["cache-control"], "private,max-age={max_age}".format(
+            max_age=settings.AWS_S3_MAX_AGE_SECONDS,
+        ))
 
     def testSecureUrlIsPrivate(self):
         # Generate an insecure URL.
@@ -249,7 +248,9 @@ class TestS3Storage(TestCase):
             url = self.storage_metadata.url(upload_path)
             # Ensure that the URL is accessible.
             response = self.assertUrlAccessible(url)
-            self.assertEqual(response.headers["content-disposition"], "attachment;filename={}".format(posixpath.basename(upload_path)))
+            self.assertEqual(response.headers["content-disposition"], "attachment;filename={}".format(
+                posixpath.basename(upload_path)),
+            )
             self.assertEqual(response.headers["content-language"], "fr")
         finally:
             # Clean up the test file.
@@ -289,7 +290,9 @@ class TestS3Storage(TestCase):
         # Metadata should have been synced.
         url = self.storage_metadata.url(self.upload_path)
         response = self.assertUrlAccessible(url)
-        self.assertEqual(response.headers["content-disposition"], "attachment;filename={}".format(posixpath.basename(self.upload_path)))
+        self.assertEqual(response.headers["content-disposition"], "attachment;filename={}".format(
+            posixpath.basename(self.upload_path)),
+        )
         self.assertEqual(response.headers["content-language"], "fr")
 
     # Public URL tests.

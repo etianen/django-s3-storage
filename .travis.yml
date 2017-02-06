@@ -1,35 +1,41 @@
 language: python
 sudo: false
-python:
-  - 2.7
-  - 3.4
-  - 3.5
 env:
-  matrix:
-    - DJANGO=django==1.8.14
-    - DJANGO=django==1.9.9
-    - DJANGO=django==1.10.1
   global:
-    # AWS_REGION
-    - secure: "X1EQYf7UP8ynhObVgeA42ZYUIjcUNI6Lgj0MfE0XsOmBc9BkNlf1wVe3MlCCTVh/l4OI80r0YkxGrvMIGnCDbI9SD7PbAnYSKlMpnKTUjniM6ZkGME4t/wxreMakbwMVbJXnqkR3dDUWxJ+RBeksrwKwqvESOlGsc4ew9K6h1Lw="
-    # AWS_ACCESS_KEY_ID
-    - secure: "fYo2oYtTp7LhynDNV7oDkfLu9qowpghYjZZlCs+YyxE7+QQtYjTGTK1yd4L9uQVf0bEVD0KQI4TU6Gv8bQir0DJge+DTxuYp1a2zkDegog8JpQT3QIA7h2IPsC3JgHESY482MDuIkiA7E5NLHtEZBcqcVCWk6a117UIh0kJID8I="
-    # AWS_SECRET_ACCESS_KEY
-    - secure: "N0FrVtz+PdOH4wFKUTNxcAD1pmTyz2et9mroGV/uRPrIo/zXRBrj3zHdjneZGw+5m+5O246qgprAXtsj61YusGXGYmdr9B5bHyAzVD2T+5slyN37dZVfHPMx55PCMBUdG1aMbNTAE8G7AmwyKt5ujIZliDOERxjqzFsHrNCf8Ks="
-    # AWS_S3_BUCKET_NAME
-    - secure: "J9RE3MbU26kmTg5y8WwMD0RnW99SxjJvNY4uFfdbDuPlAn6BV9BQuq1qaPYGksdYdJ8WmXhlRKIhjXjZIgvIEzDQ0msPbJ3dU7uCJFrZRVG3I/jbZR0EfcOiWCaDuQU2TDZw5bo4qanTr4nnZpnBVqj0erjytxUkyqIuRAR3xOg="
-    # AWS_S3_BUCKET_NAME_STATIC
-    - secure: "LY/cIlI4DW9JAYbPK3pztVptQoaLyLU8UX7s1k9+OmJ/jkfJozbsC9PS3VAIQqJVSE78oRjp2tJOkpg1CsOxI6PttplMzoJznNBbQ6G5iCITugV+o0wuCesM31FqMratOWalZjoDMCdv/qb624KOO2o+0XR5EpLUk+/iJmtdtaI="
+  # AWS_REGION
+  - secure: "X1EQYf7UP8ynhObVgeA42ZYUIjcUNI6Lgj0MfE0XsOmBc9BkNlf1wVe3MlCCTVh/l4OI80r0YkxGrvMIGnCDbI9SD7PbAnYSKlMpnKTUjniM6ZkGME4t/wxreMakbwMVbJXnqkR3dDUWxJ+RBeksrwKwqvESOlGsc4ew9K6h1Lw="
+  # AWS_ACCESS_KEY_ID
+  - secure: "fYo2oYtTp7LhynDNV7oDkfLu9qowpghYjZZlCs+YyxE7+QQtYjTGTK1yd4L9uQVf0bEVD0KQI4TU6Gv8bQir0DJge+DTxuYp1a2zkDegog8JpQT3QIA7h2IPsC3JgHESY482MDuIkiA7E5NLHtEZBcqcVCWk6a117UIh0kJID8I="
+  # AWS_SECRET_ACCESS_KEY
+  - secure: "N0FrVtz+PdOH4wFKUTNxcAD1pmTyz2et9mroGV/uRPrIo/zXRBrj3zHdjneZGw+5m+5O246qgprAXtsj61YusGXGYmdr9B5bHyAzVD2T+5slyN37dZVfHPMx55PCMBUdG1aMbNTAE8G7AmwyKt5ujIZliDOERxjqzFsHrNCf8Ks="
+  # AWS_S3_BUCKET_NAME
+  - secure: "J9RE3MbU26kmTg5y8WwMD0RnW99SxjJvNY4uFfdbDuPlAn6BV9BQuq1qaPYGksdYdJ8WmXhlRKIhjXjZIgvIEzDQ0msPbJ3dU7uCJFrZRVG3I/jbZR0EfcOiWCaDuQU2TDZw5bo4qanTr4nnZpnBVqj0erjytxUkyqIuRAR3xOg="
+  # AWS_S3_BUCKET_NAME_STATIC
+  - secure: "LY/cIlI4DW9JAYbPK3pztVptQoaLyLU8UX7s1k9+OmJ/jkfJozbsC9PS3VAIQqJVSE78oRjp2tJOkpg1CsOxI6PttplMzoJznNBbQ6G5iCITugV+o0wuCesM31FqMratOWalZjoDMCdv/qb624KOO2o+0XR5EpLUk+/iJmtdtaI="
 matrix:
   fast_finish: true
 cache:
   directories:
-    - $HOME/.cache/pip
+  - "$HOME/.cache/pip"
+before_install:
+  # Install the latest version of pyenv.
+  - rm -rf ~/.pyenv
+  - curl -L https://raw.githubusercontent.com/yyuu/pyenv-installer/master/bin/pyenv-installer | bash
+  # Install python.
+  - pyenv install 2.7.13
+  - pyenv install 3.5.2
+  - pyenv install 3.6.0
 install:
-  - travis_retry pip install $DJANGO -e .[test]
-script:
-  - coverage run tests/manage.py test django_s3_storage
-after_script:
-  - coverage report
+- pip install 'tox>=2.3.1'
+script: tox
 notifications:
   email: false
+deploy:
+  provider: pypi
+  user: etianen
+  password:
+    secure: T6owRJudXfLP2cntqbsyAMHnOq6rbIAgXfEt1a9smDjyxyXpCH+XAxUWw+5mMZ3mFALyquZGzodtq+cil2j7XkB5gW0fQfo8YtoqjrrIdgvmWLS2zur9c1U+DXIG8vjLLkMiKTg1TXoeb0phELIme4Clxb9KuSKTaFosKWdVy8g=
+  on:
+    tags: true
+    distributions: sdist bdist_wheel
+    repo: etianen/django-s3-storage

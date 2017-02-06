@@ -1,3 +1,8 @@
+[run]
+source =
+    django_s3_storage
+    django_s3_storage_test
+
 [report]
 exclude_lines =
     # Have to re-enable the standard pragma
@@ -11,9 +16,5 @@ exclude_lines =
     # Don't complain if tests don't hit model __str__ methods.
     def __str__
 
-omit = 
-    */venv/*
-    */virtualenv/*
-    */django_s3_storage_test/*
-
 show_missing = True
+skip_covered = True

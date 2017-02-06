@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
-
-import posixpath, datetime, mimetypes, gzip, os
+import datetime
+import gzip
+import mimetypes
+import os
+import posixpath
 from io import TextIOBase
 from email.utils import parsedate_tz
 from contextlib import closing, contextmanager
@@ -50,17 +53,37 @@ class S3Storage(Storage):
     Python 3, which is kinda lame.
     """
 
-    def __init__(self, aws_region=None, aws_access_key_id=None, aws_secret_access_key=None, aws_s3_bucket_name=None, aws_s3_calling_format=None, aws_s3_key_prefix=None, aws_s3_bucket_auth=None, aws_s3_max_age_seconds=None, aws_s3_public_url=None, aws_s3_reduced_redundancy=False, aws_s3_host=None, aws_s3_metadata=None, aws_s3_encrypt_key=None, aws_s3_gzip=None):
+    def __init__(
+        self,
+        aws_region=None,
+        aws_access_key_id=None,
+        aws_secret_access_key=None,
+        aws_s3_bucket_name=None,
+        aws_s3_calling_format=None,
+        aws_s3_key_prefix=None,
+        aws_s3_bucket_auth=None,
+        aws_s3_max_age_seconds=None,
+        aws_s3_public_url=None,
+        aws_s3_reduced_redundancy=False,
+        aws_s3_host=None,
+        aws_s3_metadata=None,
+        aws_s3_encrypt_key=None,
+        aws_s3_gzip=None,
+    ):
         self.aws_region = settings.AWS_REGION if aws_region is None else aws_region
         self.aws_access_key_id = settings.AWS_ACCESS_KEY_ID if aws_access_key_id is None else aws_access_key_id
-        self.aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY if aws_secret_access_key is None else aws_secret_access_key
+        self.aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY if aws_secret_access_key is None \
+            else aws_secret_access_key
         self.aws_s3_bucket_name = settings.AWS_S3_BUCKET_NAME if aws_s3_bucket_name is None else aws_s3_bucket_name
-        self.aws_s3_calling_format = settings.AWS_S3_CALLING_FORMAT if aws_s3_calling_format is None else aws_s3_calling_format
+        self.aws_s3_calling_format = settings.AWS_S3_CALLING_FORMAT if aws_s3_calling_format is None \
+            else aws_s3_calling_format
         self.aws_s3_key_prefix = settings.AWS_S3_KEY_PREFIX if aws_s3_key_prefix is None else aws_s3_key_prefix
         self.aws_s3_bucket_auth = settings.AWS_S3_BUCKET_AUTH if aws_s3_bucket_auth is None else aws_s3_bucket_auth
-        self.aws_s3_max_age_seconds = settings.AWS_S3_MAX_AGE_SECONDS if aws_s3_max_age_seconds is None else aws_s3_max_age_seconds
+        self.aws_s3_max_age_seconds = settings.AWS_S3_MAX_AGE_SECONDS if aws_s3_max_age_seconds is None \
+            else aws_s3_max_age_seconds
         self.aws_s3_public_url = settings.AWS_S3_PUBLIC_URL if aws_s3_public_url is None else aws_s3_public_url
-        self.aws_s3_reduced_redundancy = settings.AWS_S3_REDUCED_REDUNDANCY if aws_s3_reduced_redundancy is None else aws_s3_reduced_redundancy
+        self.aws_s3_reduced_redundancy = settings.AWS_S3_REDUCED_REDUNDANCY if aws_s3_reduced_redundancy is None \
+            else aws_s3_reduced_redundancy
         self.aws_s3_host = settings.AWS_S3_HOST if aws_s3_host is None else aws_s3_host
         self.aws_s3_metadata = settings.AWS_S3_METADATA if aws_s3_metadata is None else aws_s3_metadata
         self.aws_s3_encrypt_key = settings.AWS_S3_ENCRYPT_KEY if aws_s3_encrypt_key is None else aws_s3_encrypt_key
@@ -105,8 +128,8 @@ class S3Storage(Storage):
         else:
             privacy = "public"
         return "{privacy},max-age={max_age}".format(
-            privacy = privacy,
-            max_age = self.aws_s3_max_age_seconds,
+            privacy=privacy,
+            max_age=self.aws_s3_max_age_seconds,
         )
 
     def _get_content_encoding(self, content_type):
@@ -211,11 +234,11 @@ class S3Storage(Storage):
         storage will return an unsigned URL, which aids in browser caching.
         """
         return self.s3_connection.generate_url(
-            method = "GET",
-            bucket = self.aws_s3_bucket_name,
-            key = self._get_key_name(name),
-            expires_in = self.aws_s3_max_age_seconds,
-            query_auth = self.aws_s3_bucket_auth,
+            method="GET",
+            bucket=self.aws_s3_bucket_name,
+            key=self._get_key_name(name),
+            expires_in=self.aws_s3_max_age_seconds,
+            query_auth=self.aws_s3_bucket_auth,
         )
 
     def _get_key(self, name, validate=False):
@@ -242,7 +265,7 @@ class S3Storage(Storage):
             key.get_contents_to_file(content)
         except S3ResponseError:
             raise IOError("File {name} does not exist".format(
-                name = name,
+                name=name,
             ))
         content.seek(0)
         # Un-gzip if required.
@@ -267,10 +290,10 @@ class S3Storage(Storage):
             # Save the file.
             self._get_key(name).set_contents_from_file(
                 content,
-                policy = self._get_canned_acl(),
-                headers = headers,
-                reduced_redundancy = self.aws_s3_reduced_redundancy,
-                encrypt_key = self.aws_s3_encrypt_key,
+                policy=self._get_canned_acl(),
+                headers=headers,
+                reduced_redundancy=self.aws_s3_reduced_redundancy,
+                encrypt_key=self.aws_s3_encrypt_key,
             )
             # Return the name that was saved.
             return name

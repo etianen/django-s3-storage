@@ -1,315 +1,228 @@
 # coding=utf-8
 from __future__ import unicode_literals
-import datetime
-import posixpath
-import time
-import uuid
+from contextlib import contextmanager
+from datetime import datetime, timedelta
+from unittest import skipIf
+import os
 import requests
+import django
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
-from django.test import TestCase
-from django.utils.encoding import force_bytes, force_text
-from django.utils import timezone
-from django_s3_storage.conf import settings
+from django.core.files.storage import default_storage
+from django.core.management import call_command, CommandError
+from django.contrib.staticfiles.storage import staticfiles_storage
+from django.test import SimpleTestCase
+from django.utils.six import StringIO
+from django.utils.six.moves.urllib.parse import urlsplit, urlunsplit
 from django_s3_storage.storage import S3Storage, StaticS3Storage
 
 
-class TestS3Storage(TestCase):
+class TestS3Storage(SimpleTestCase):
 
-    # Lazy settings tests.
+    # Helpers.
 
-    def testLazySettingsInstanceLookup(self):
-        self.assertTrue(settings.AWS_REGION)
+    @contextmanager
+    def save_file(self, name="foo.txt", content=b"foo", storage=default_storage):
+        name = storage.save(name, ContentFile(content, name))
+        try:
+            yield name
+        finally:
+            storage.delete(name)
 
-    def testLazySettingsClassLookup(self):
-        self.assertEqual(settings.__class__.AWS_REGION.name, "AWS_REGION")
-        self.assertEqual(settings.__class__.AWS_REGION.default, "us-east-1")
+    # Configuration tets.
 
-    # Lifecycle.
+    def testSettingsImported(self):
+        self.assertEqual(S3Storage().settings.AWS_S3_CONTENT_LANGUAGE, "")
+        with self.settings(AWS_S3_CONTENT_LANGUAGE="foo"):
+            self.assertEqual(S3Storage().settings.AWS_S3_CONTENT_LANGUAGE, "foo")
 
-    @classmethod
-    def generateUploadBasename(cls, extension=None):
-        return uuid.uuid4().hex + (extension or ".txt")
+    def testSettingsOverwritenBySuffixedSettings(self):
+        self.assertEqual(StaticS3Storage().settings.AWS_S3_CONTENT_LANGUAGE, "")
+        with self.settings(AWS_S3_CONTENT_LANGUAGE="foo", AWS_S3_CONTENT_LANGUAGE_STATIC="bar"):
+            self.assertEqual(StaticS3Storage().settings.AWS_S3_CONTENT_LANGUAGE, "bar")
 
-    @classmethod
-    def generateUploadPath(cls, basename=None, extension=None):
-        return posixpath.join(cls.upload_dir, basename or cls.generateUploadBasename(extension))
+    def testSettingsOverwrittenByKwargs(self):
+        self.assertEqual(S3Storage().settings.AWS_S3_CONTENT_LANGUAGE, "")
+        self.assertEqual(S3Storage(aws_s3_content_language="foo").settings.AWS_S3_CONTENT_LANGUAGE, "foo")
 
-    @classmethod
-    def saveTestFile(cls, upload_path=None, storage=None, file=None):
-        saved_path = (storage or cls.storage).save(upload_path or cls.upload_path, file or cls.file)
-        time.sleep(0.2)  # Give it a chance to propagate over S3.
-        return saved_path
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestS3Storage, cls).setUpClass()
-        cls.key_prefix = uuid.uuid4().hex
-        cls.storage = S3Storage(aws_s3_key_prefix=cls.key_prefix)
-        cls.storage_metadata = S3Storage(aws_s3_key_prefix=cls.key_prefix, aws_s3_metadata={
-            "Content-Disposition": lambda name: "attachment;filename={}".format(posixpath.basename(name)),
-            "Content-Language": "fr",
-        })
-        cls.insecure_storage = S3Storage(
-            aws_s3_key_prefix=cls.key_prefix,
-            aws_s3_bucket_auth=False,
-            aws_s3_max_age_seconds=60*60*24*365,
-        )
-        cls.key_prefix_static = uuid.uuid4().hex
-        cls.static_storage = StaticS3Storage(aws_s3_key_prefix=cls.key_prefix_static)
-        cls.upload_base = uuid.uuid4().hex
-        cls.file_contents = force_bytes(uuid.uuid4().hex * 1000, "ascii")
-        cls.file = ContentFile(cls.file_contents)
-        cls.upload_dirname = uuid.uuid4().hex
-        cls.upload_dir = posixpath.join(cls.upload_base, cls.upload_dirname)
-        cls.upload_basename = cls.generateUploadBasename()
-        cls.upload_path = cls.generateUploadPath(cls.upload_basename)
-        cls.upload_time = datetime.datetime.now()
-        # Save a file to the upload path.
-        cls.saveTestFile()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestS3Storage, cls).tearDownClass()
-        cls.storage.delete(cls.upload_path)
-
-    # Assertions.
-
-    def assertSimilarDatetime(self, a, b, resolution=datetime.timedelta(seconds=10)):
-        """
-        Assets that two datetimes are similar to each other.
-
-        This allows testing of two generated timestamps that might differ by
-        a few milliseconds due to network/disk latency, but should be roughly similar.
-
-        The default resolution assumes that a 10-second window is similar
-        enough, and can be tweaked with the `resolution` argument.
-        """
-        self.assertLess(abs(a - b), resolution)
-
-    def assertCorrectTimestamp(self, timestamp):
-        self.assertSimilarDatetime(timestamp, self.upload_time)
-        self.assertTrue(timezone.is_naive(timestamp))
-
-    def assertUrlAccessible(self, url, file_contents=None, content_type="text/plain", content_encoding="gzip"):
-        response = requests.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.headers.get("content-type"), content_type)
-        self.assertEqual(response.headers.get("content-encoding"), content_encoding)
-        self.assertEqual(response.content, file_contents or self.file_contents)
-        return response
-
-    def assertUrlInaccessible(self, url):
-        response = requests.get(url)
-        self.assertEqual(response.status_code, 403)
-
-    # Tests.
-
-    def testOpen(self):
-        self.assertEqual(self.storage.open(self.upload_path).read(), self.file_contents)
-
-    def testReOpen(self):
-        handle = self.storage.open(self.upload_path)
-        handle.close()
-        handle.open()
-        self.assertEqual(handle.read(), self.file_contents)
-
-    def testCannotOpenInWriteMode(self):
-        with self.assertRaises(ValueError) as cm:
-            self.storage.open(self.upload_path, "wb")
-        self.assertEqual(force_text(cm.exception), "S3 files can only be opened in read-only mode")
-
-    def testIOErrorRaisedOnOpenMissingFile(self):
-        upload_path = self.generateUploadPath()
-        with self.assertRaises(IOError) as cm:
-            self.storage.open(upload_path)
-        self.assertEqual(force_text(cm.exception), "File {name} does not exist".format(
-            name=upload_path,
+    def testSettingsCannotUsePublicUrlAndBucketAuth(self):
+        self.assertRaises(ImproperlyConfigured, lambda: S3Storage(
+            aws_s3_bucket_auth=True,
+            aws_s3_public_url="/foo/",
         ))
 
-    def testSaveTextModeFile(self):
-        upload_path = self.generateUploadPath()
-        file_contents = "Fôö"  # Note the accents. This is a unicode string.
-        self.storage.save(upload_path, ContentFile(file_contents, upload_path))
-        try:
-            stored_contents = self.storage.open(upload_path).read()
-            self.assertEqual(stored_contents, force_bytes(file_contents))
-        finally:
-            self.storage.delete(upload_path)
+    def testSettingsUnknown(self):
+        self.assertRaises(ImproperlyConfigured, lambda: S3Storage(
+            foo=True,
+        ))
+
+    # Storage tests.
+
+    @skipIf(django.VERSION < (1, 10), "Feature not supported by Django")
+    def testGenerateFilename(self):
+        self.assertEqual(default_storage.generate_filename(os.path.join("foo", ".", "bar.txt")), "foo/bar.txt")
+
+    def testOpenMissing(self):
+        self.assertRaises(IOError, lambda: default_storage.open("foo.txt"))
+
+    def testOpenWriteMode(self):
+        self.assertRaises(ValueError, lambda: default_storage.open("foo.txt", "wb"))
+
+    def testSaveAndOpen(self):
+        with self.save_file() as name:
+            self.assertEqual(name, "foo.txt")
+            handle = default_storage.open(name)
+            self.assertEqual(handle.read(), b"foo")
+            # Re-open the file.
+            handle.close()
+            handle.open()
+            self.assertEqual(handle.read(), b"foo")
+
+    def testSaveTextMode(self):
+        with self.save_file(content="foo"):
+            self.assertEqual(default_storage.open("foo.txt").read(), b"foo")
+
+    def testSaveGzipped(self):
+        # Tiny files are not gzipped.
+        with self.save_file():
+            self.assertEqual(default_storage.meta("foo.txt").get("ContentEncoding"), None)
+            self.assertEqual(default_storage.open("foo.txt").read(), b"foo")
+            self.assertEqual(requests.get(default_storage.url("foo.txt")).content, b"foo")
+        # Large files are gzipped.
+        with self.save_file(content=b"foo" * 1000):
+            self.assertEqual(default_storage.meta("foo.txt").get("ContentEncoding"), "gzip")
+            self.assertEqual(default_storage.open("foo.txt").read(), b"foo" * 1000)
+            self.assertEqual(requests.get(default_storage.url("foo.txt")).content, b"foo" * 1000)
+
+    def testUrl(self):
+        with self.save_file():
+            url = default_storage.url("foo.txt")
+            # The URL should contain query string authentication.
+            self.assertTrue(urlsplit(url).query)
+            response = requests.get(url)
+            # The URL should be accessible, but be marked as private.
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content, b"foo")
+            self.assertEqual(response.headers["cache-control"], "private,max-age=3600")
+            # With the query string removed, the URL should not be accessible.
+            url_unauthenticated = urlunsplit(urlsplit(url)[:3] + ("", "",))
+            response_unauthenticated = requests.get(url_unauthenticated)
+            self.assertEqual(response_unauthenticated.status_code, 403)
 
     def testExists(self):
-        self.assertTrue(self.storage.exists(self.upload_path))
-        self.assertFalse(self.storage.exists(self.generateUploadPath()))
-
-    def testDirExists(self):
-        self.assertTrue(self.storage.exists(""))
-
-    def testDelete(self):
-        # Make a new file to delete.
-        upload_path = self.generateUploadPath()
-        self.saveTestFile(upload_path)
-        self.assertTrue(self.storage.exists(upload_path))
-        # Delete the file.
-        self.storage.delete(upload_path)
-        self.assertFalse(self.storage.exists(upload_path))
-
-    def testListdir(self):
-        self.assertEqual(self.storage.listdir(self.upload_dir), ([], [self.upload_basename]))
-        self.assertEqual(self.storage.listdir(self.upload_base), ([self.upload_dirname], []))
+        self.assertFalse(default_storage.exists("foo.txt"))
+        with self.save_file():
+            self.assertTrue(default_storage.exists("foo.txt"))
 
     def testSize(self):
-        size = self.storage.size(self.upload_path)
-        self.assertGreater(size, 100)  # It should take up some space!
-        self.assertLess(size, len(self.file_contents))  # But less space than the original, due to gzipping.
+        with self.save_file():
+            self.assertEqual(default_storage.size("foo.txt"), 3)
 
-    def testAccessedTime(self):
-        self.assertCorrectTimestamp(self.storage.accessed_time(self.upload_path))
-
-    def testCreatedTime(self):
-        self.assertCorrectTimestamp(self.storage.created_time(self.upload_path))
+    def testDelete(self):
+        with self.save_file():
+            self.assertTrue(default_storage.exists("foo.txt"))
+            default_storage.delete("foo.txt")
+        self.assertFalse(default_storage.exists("foo.txt"))
 
     def testModifiedTime(self):
-        self.assertCorrectTimestamp(self.storage.modified_time(self.upload_path))
+        with self.save_file():
+            modified_time = default_storage.modified_time("foo.txt")
+            # Check that the timestamps are roughly equals.
+            self.assertLess(abs(modified_time - datetime.now()), timedelta(seconds=10))
+            # All other timestamps are slaved to modified time.
+            self.assertEqual(default_storage.accessed_time("foo.txt"), modified_time)
+            self.assertEqual(default_storage.created_time("foo.txt"), modified_time)
 
-    def testSecureUrlIsAccessible(self):
-        # Generate a secure URL.
-        url = self.storage.url(self.upload_path)
-        # Ensure that the URL is signed.
-        self.assertIn("?", url)
-        # Ensure that the URL is accessible.
-        response = self.assertUrlAccessible(url)
-        self.assertEqual(response.headers["cache-control"], "private,max-age={max_age}".format(
-            max_age=settings.AWS_S3_MAX_AGE_SECONDS,
-        ))
+    def testListdir(self):
+        self.assertEqual(default_storage.listdir(""), ([], []))
+        self.assertEqual(default_storage.listdir("/"), ([], []))
+        with self.save_file(), self.save_file(name="bar/bat.txt"):
+            self.assertEqual(default_storage.listdir(""), (["bar"], ["foo.txt"]))
+            self.assertEqual(default_storage.listdir("/"), (["bar"], ["foo.txt"]))
+            self.assertEqual(default_storage.listdir("bar"), ([], ["bat.txt"]))
+            self.assertEqual(default_storage.listdir("/bar"), ([], ["bat.txt"]))
+            self.assertEqual(default_storage.listdir("bar/"), ([], ["bat.txt"]))
 
-    def testSecureUrlIsPrivate(self):
-        # Generate an insecure URL.
-        url = self.insecure_storage.url(self.upload_path)
-        # Ensure that the URL is unsigned.
-        self.assertNotIn("?", url)
-        # Ensure that the unsigned URL is inaccessible.
-        self.assertUrlInaccessible(url)
+    def testSyncMeta(self):
+        with self.save_file(content=b"foo" * 1000):
+            meta = default_storage.meta("foo.txt")
+            self.assertEqual(meta["CacheControl"], "private,max-age=3600")
+            self.assertEqual(meta["ContentType"], "text/plain")
+            self.assertEqual(meta["ContentEncoding"], "gzip")
+            self.assertEqual(meta.get("ContentDisposition"), None)
+            self.assertEqual(meta.get("ContentLanguage"), None)
+            self.assertEqual(meta["Metadata"], {})
+            self.assertEqual(meta.get("StorageClass"), None)
+            self.assertEqual(meta.get("ServerSideEncryption"), None)
+            # Store new metadata.
+            with self.settings(
+                AWS_S3_BUCKET_AUTH=False,
+                AWS_S3_MAX_AGE_SECONDS=9999,
+                AWS_S3_CONTENT_DISPOSITION=lambda name: "attachment; filename={}".format(name),
+                AWS_S3_CONTENT_LANGUAGE="eo",
+                AWS_S3_METADATA={
+                    "foo": "bar",
+                    "baz": lambda name: name,
+                },
+                AWS_S3_REDUCED_REDUNDANCY=True,
+                AWS_S3_ENCRYPT_KEY=True,
+            ):
+                default_storage.sync_meta()
+            # Check metadata changed.
+            meta = default_storage.meta("foo.txt")
+            self.assertEqual(meta["CacheControl"], "public,max-age=9999")
+            self.assertEqual(meta["ContentType"], "text/plain")
+            self.assertEqual(meta["ContentEncoding"], "gzip")
+            self.assertEqual(meta.get("ContentDisposition"), "attachment; filename=foo.txt")
+            self.assertEqual(meta.get("ContentLanguage"), "eo")
+            self.assertEqual(meta.get("Metadata"), {
+                "foo": "bar",
+                "baz": "foo.txt",
+            })
+            self.assertEqual(meta["StorageClass"], "REDUCED_REDUNDANCY")
+            self.assertEqual(meta["ServerSideEncryption"], "AES256")
+            # Check ACL changed by removing the query string.
+            url_unauthenticated = urlunsplit(urlsplit(default_storage.url("foo.txt"))[:3] + ("", "",))
+            response = requests.get(url_unauthenticated)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content, b"foo" * 1000)
 
-    def testInsecureUrlIsAccessible(self):
-        # Make a new insecure file.
-        upload_path = self.generateUploadPath()
-        self.saveTestFile(upload_path, storage=self.insecure_storage)
-        try:
-            self.assertTrue(self.insecure_storage.exists(upload_path))
-            # Generate an insecure URL.
-            url = self.insecure_storage.url(upload_path)
-            # Ensure that the URL is unsigned.
-            self.assertNotIn("?", url)
-            # Ensure that the URL is accessible.
-            response = self.assertUrlAccessible(url)
-            self.assertEqual(response.headers["cache-control"], "public,max-age=31536000")
-        finally:
-            # Clean up the test file.
-            self.insecure_storage.delete(upload_path)
+    def testPublicUrl(self):
+        with self.settings(AWS_S3_PUBLIC_URL="/foo/", AWS_S3_BUCKET_AUTH=False):
+            self.assertEqual(default_storage.url("bar.txt"), "/foo/bar.txt")
 
-    def testNonGzippedFile(self):
-        # Make a new non-gzipped file.
-        upload_path = self.generateUploadPath(extension=".jpg")
-        self.saveTestFile(upload_path)
-        try:
-            self.assertTrue(self.storage.exists(upload_path))
-            # Generate a URL.
-            url = self.storage.url(upload_path)
-            # Ensure that the URL is accessible.
-            self.assertUrlAccessible(url, content_type="image/jpeg", content_encoding=None)
-        finally:
-            # Clean up the test file.
-            self.storage.delete(upload_path)
-
-    def testSmallGzippedFile(self):
-        # A tiny file gets bigger when gzipped.
-        upload_path = self.generateUploadPath()
-        file_contents = force_bytes(uuid.uuid4().hex, "ascii")
-        self.saveTestFile(upload_path, file=ContentFile(file_contents))
-        try:
-            self.assertTrue(self.storage.exists(upload_path))
-            # Generate a URL.
-            url = self.storage.url(upload_path)
-            # Ensure that the URL is accessible.
-            self.assertUrlAccessible(url, file_contents=file_contents, content_encoding=None)
-        finally:
-            # Clean up the test file.
-            self.storage.delete(upload_path)
-
-    # Uploading with custom metadata.
-
-    def testUploadWithMetadata(self):
-        # Make a new non-gzipped file.
-        upload_path = self.generateUploadPath()
-        self.saveTestFile(upload_path, storage=self.storage_metadata)
-        try:
-            self.assertTrue(self.storage_metadata.exists(upload_path))
-            # Generate a URL.
-            url = self.storage_metadata.url(upload_path)
-            # Ensure that the URL is accessible.
-            response = self.assertUrlAccessible(url)
-            self.assertEqual(response.headers["content-disposition"], "attachment;filename={}".format(
-                posixpath.basename(upload_path)),
-            )
-            self.assertEqual(response.headers["content-language"], "fr")
-        finally:
-            # Clean up the test file.
-            self.storage.delete(upload_path)
-
-    def testUploadWithRelativePath(self):
-        upload_path = self.generateUploadBasename()
-        relative_upload_path = "./{}".format(upload_path)
-        saved_path = self.saveTestFile(upload_path=relative_upload_path)
-        try:
-            self.assertTrue(self.storage.exists(saved_path))
-            url = self.storage.url(saved_path)
-            self.assertUrlAccessible(url)
-        finally:
-            self.storage.delete(upload_path)
-
-    # Syncing meta information.
-    def testSyncMetaPrivateToPublic(self):
-        url = self.insecure_storage.url(self.upload_path)
-        self.assertUrlInaccessible(url)
-        # Sync the meta to insecure storage.
-        self.insecure_storage.sync_meta()
-        time.sleep(0.2)  # Give it a chance to propagate over S3.
-        # URL is now accessible and well-cached.
-        response = self.assertUrlAccessible(url)
-        self.assertEqual(response.headers["cache-control"], "public,max-age=31536000")
-
-    def testSyncMetadataCustom(self):
-        # Check metadata not synced.
-        url = self.storage.url(self.upload_path)
-        response = self.assertUrlAccessible(url)
-        self.assertEqual(response.headers.get("content-disposition", ""), "")
-        self.assertEqual(response.headers.get("content-language", ""), "")
-        # Sync the meta.
-        self.storage_metadata.sync_meta()
-        time.sleep(0.2)  # Give it a chance to propagate over S3.
-        # Metadata should have been synced.
-        url = self.storage_metadata.url(self.upload_path)
-        response = self.assertUrlAccessible(url)
-        self.assertEqual(response.headers["content-disposition"], "attachment;filename={}".format(
-            posixpath.basename(self.upload_path)),
-        )
-        self.assertEqual(response.headers["content-language"], "fr")
-
-    # Public URL tests.
-
-    def testCannotUseBucketAuthWithPublicUrl(self):
-        with self.assertRaises(ImproperlyConfigured) as cm:
-            S3Storage(aws_s3_bucket_auth=True, aws_s3_public_url="http://www.example.com/foo/")
-        self.assertEqual(force_text(cm.exception), "Cannot use AWS_S3_BUCKET_AUTH with AWS_S3_PUBLIC_URL.")
-
-    def testGeneratePublicUrl(self):
-        storage = S3Storage(aws_s3_bucket_auth=False, aws_s3_public_url="http://www.example.com/foo/")
-        self.assertEqual(storage.url("bar.png"), "http://www.example.com/foo/bar.png")
+    def testEndpointUrl(self):
+        with self.settings(AWS_S3_ENDPOINT_URL="https://s3.amazonaws.com"), self.save_file() as name:
+            self.assertEqual(name, "foo.txt")
+            self.assertEqual(default_storage.open(name).read(), b"foo")
 
     # Static storage tests.
 
-    def testStaticS3StorageDefaultsToPublic(self):
-        self.assertFalse(self.static_storage.aws_s3_bucket_auth)
+    def testStaticSettings(self):
+        self.assertEqual(staticfiles_storage.settings.AWS_S3_BUCKET_AUTH, False)
+        self.assertEqual(staticfiles_storage.settings.AWS_S3_MAX_AGE_SECONDS, 31536000)
 
-    def testStaticS3StorageDefaultsToLongMaxAge(self):
-        self.assertEqual(self.static_storage.aws_s3_max_age_seconds, 60*60*24*365)
+    def testStaticUrl(self):
+        with self.save_file(storage=staticfiles_storage):
+            url = staticfiles_storage.url("foo.txt")
+            # The URL should not contain query string authentication.
+            self.assertFalse(urlsplit(url).query)
+            response = requests.get(url)
+            # The URL should be accessible, but be marked as public.
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content, b"foo")
+            self.assertEqual(response.headers["cache-control"], "public,max-age=31536000")
+
+    # Management commands.
+
+    def testManagementS3SyncMeta(self):
+        with self.save_file():
+            # Store new metadata.
+            with self.settings(AWS_S3_MAX_AGE_SECONDS=9999):
+                call_command("s3_sync_meta", "django.core.files.storage.default_storage", stdout=StringIO())
+            # Check metadata changed.
+            meta = default_storage.meta("foo.txt")
+            self.assertEqual(meta["CacheControl"], "private,max-age=9999")
+
+    def testManagementS3SyncMetaUnknownStorage(self):
+        self.assertRaises(CommandError, lambda: call_command("s3_sync_meta", "foo.bar", stdout=StringIO()))

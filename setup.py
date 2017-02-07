@@ -17,7 +17,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "django>=1.7",
-        "boto>=2.35",
+        "boto3>=1.4.4,<2",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

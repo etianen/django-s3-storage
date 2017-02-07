@@ -170,8 +170,8 @@ The author of django-s3-storage is not aware of significant differences in funct
 If you notice some differences, please file an issue!
 
 
-Migration from django-storages(non-redux)
------------------------------------------
+Migration from django-storages (non-redux)
+------------------------------------------
 
 If your are updating a project that used `django-storages <https://pypi.python.org/pypi/django-storages/1.1.8>`_ just for S3 file storage, migration is trivial.
 

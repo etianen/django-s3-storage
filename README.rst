@@ -42,7 +42,7 @@ Use the following settings to authenticate with Amazon AWS.
 File storage settings
 ---------------------
 
-Use the following settings to configure the S3 file storage. You must provide at least `AWS_S3_BUCKET_NAME`.
+Use the following settings to configure the S3 file storage. You must provide at least ``AWS_S3_BUCKET_NAME``.
 
 .. code:: python
 
@@ -109,8 +109,8 @@ existing files, run ``./manage.py s3_sync_meta django.core.files.storage.default
 Staticfiles storage settings
 ----------------------------
 
-All of the available file storage settings are available for the staticfiles storage, sufficed with ``_STATIC``.
-You must provide at least `AWS_S3_BUCKET_NAME_STATIC`.
+All of the file storage settings are available for the staticfiles storage, sufficed with ``_STATIC``.
+You must provide at least ``AWS_S3_BUCKET_NAME_STATIC``.
 
 The following staticfiles storage settings have different default values to their file storage counterparts.
 
@@ -151,8 +151,7 @@ Management commands
 
 Syncronizes the meta information on S3 files.
 
-If you change any of the ``AWS_S3_BUCKET_AUTH``, ``AWS_S3_MAX_AGE_SECONDS``, or ``AWS_S3_METADATA`` settings, you will need
-to run this command before the changes will be applied to existing media files.
+Several settings (noted above) will not affect existing files. Run this command to sync the new settings to existing files.
 
 Example usage: ``./manage.py s3_sync_meta django.core.files.storage.default_storage``
 

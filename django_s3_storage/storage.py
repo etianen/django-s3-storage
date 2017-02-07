@@ -64,10 +64,13 @@ class S3Storage(Storage):
     An implementation of Django file storage over S3.
     """
 
-    default_settings = {
+    default_auth_settings = {
         "AWS_REGION": "us-east-1",
         "AWS_ACCESS_KEY_ID": "",
         "AWS_SECRET_ACCESS_KEY": "",
+    }
+
+    default_s3_settings = {
         "AWS_S3_BUCKET_NAME": "",
         "AWS_S3_ADDRESSING_STYLE": "auto",
         "AWS_S3_ENDPOINT_URL": "",
@@ -83,29 +86,27 @@ class S3Storage(Storage):
         "AWS_S3_GZIP": True,
     }
 
-    setting_suffix = ""
+    s3_settings_suffix = ""
 
     def _setup(self):
         self.settings = type(force_str("Settings"), (), {})()
         # Configure own settings.
-        for setting_key, setting_default_value in self.default_settings.items():
+        for setting_key, setting_default_value in self.default_auth_settings.items():
             setattr(
                 self.settings,
                 setting_key,
-                # Try to read setting from kwargs.
                 self._kwargs.get(
                     setting_key.lower(),
-                    # Try to read setting from suffixed setting.
-                    getattr(
-                        settings,
-                        setting_key + self.setting_suffix,
-                        # Try to read setting from non-suffixed setting.
-                        getattr(
-                            settings,
-                            setting_key,
-                            setting_default_value,
-                        ),
-                    ),
+                    getattr(settings, setting_key, setting_default_value),
+                ),
+            )
+        for setting_key, setting_default_value in self.default_s3_settings.items():
+            setattr(
+                self.settings,
+                setting_key,
+                self._kwargs.get(
+                    setting_key.lower(),
+                    getattr(settings, setting_key + self.s3_settings_suffix, setting_default_value),
                 ),
             )
         # Validate settings.
@@ -134,7 +135,10 @@ class S3Storage(Storage):
     def __init__(self, **kwargs):
         # Check for unknown kwargs.
         for kwarg_key in kwargs.keys():
-            if kwarg_key.upper() not in self.default_settings:
+            if (
+                kwarg_key.upper() not in self.default_auth_settings and
+                kwarg_key.upper() not in self.default_s3_settings
+            ):
                 raise ImproperlyConfigured("Unknown S3Storage parameter: {}".format(kwarg_key))
         # Set up the storage.
         self._kwargs = kwargs
@@ -360,13 +364,13 @@ class StaticS3Storage(S3Storage):
     An S3 storage for storing static files.
     """
 
-    default_settings = S3Storage.default_settings.copy()
-    default_settings.update({
+    default_s3_settings = S3Storage.default_s3_settings.copy()
+    default_s3_settings.update({
         "AWS_S3_BUCKET_AUTH": False,
         "AWS_S3_MAX_AGE_SECONDS": 60 * 60 * 24 * 365,  # 1 year.
     })
 
-    setting_suffix = "_STATIC"
+    s3_settings_suffix = "_STATIC"
 
 
 class ManifestStaticS3Storage(ManifestFilesMixin, StaticS3Storage):

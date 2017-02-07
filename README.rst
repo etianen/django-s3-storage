@@ -22,119 +22,125 @@ Installation
 5. Configure your Amazon S3 settings (see Available settings, below).
 
 
-Available settings
-------------------
+Authentication settings
+-----------------------
+
+Use the following settings to authenticate with Amazon AWS.
 
 .. code:: python
 
-    # The region to connect to when storing files.
+    # The AWS region to connect to.
     AWS_REGION = "us-east-1"
 
-    # The AWS access key used to access the storage buckets.
+    # The AWS access key to use.
     AWS_ACCESS_KEY_ID = ""
 
-    # The AWS secret access key used to access the storage buckets.
+    # The AWS secret access key to use.
     AWS_SECRET_ACCESS_KEY = ""
 
-    # The S3 bucket used to store uploaded files.
+
+File storage settings
+---------------------
+
+Use the following settings to configure the S3 file storage. You must provide at least `AWS_S3_BUCKET_NAME`.
+
+.. code:: python
+
+    # The name of the bucket to store files in.
     AWS_S3_BUCKET_NAME = ""
 
-    # The S3 addressing style to use to connect to the bucket ("auto", "path" and "virtual").
+    # How to construct S3 URLs ("auto", "path", "virtual").
     AWS_S3_ADDRESSING_STYLE = "auto"
 
-    # The endpoint to connect to (only needed if you are using a non-AWS provider)
+    # The full URL to the S3 endpoint. Leave blank to use the default region URL.
     AWS_S3_ENDPOINT_URL = ""
 
-    # A prefix to add to the start of all uploaded files.
+    # A prefix to be applied to every stored file. This will be joined to every filename using the "/" separator.
     AWS_S3_KEY_PREFIX = ""
 
-    # Whether to enable querystring authentication for uploaded files.
+    # Whether to enable authentication for stored files. If True, then generated URLs will include an authentication
+    # token valid for `AWS_S3_MAX_AGE_SECONDS`. If False, then generated URLs will not include an authentication token,
+    # and their permissions will be set to "public-read".
     AWS_S3_BUCKET_AUTH = True
 
-    # The expire time used to access uploaded files.
-    AWS_S3_MAX_AGE_SECONDS = 60*60  # 1 hour.
+    # How long generated URLs are valid for. This affects the expiry of authentication tokens if `AWS_S3_BUCKET_AUTH`
+    # is True. It also affects the "Cache-Control" header of the files.
+    # Important: Changing this setting will not affect existing files.
+    AWS_S3_MAX_AGE_SECONDS = 60 * 60  # 1 hours.
 
-    # A custom URL prefix to use for public-facing URLs for uploaded files.
+    # A URL prefix to be used for generated URLs. This is useful if your bucket is served through a CDN. This setting
+    # cannot be used with `AWS_S3_BUCKET_AUTH`.
     AWS_S3_PUBLIC_URL = ""
 
-    # Whether to set the storage class of uploaded files to REDUCED_REDUNDANCY.
+    # If True, then files will be stored with reduced redundancy. Check the S3 documentation and make sure you
+    # understand the consequences before enabling.
+    # Important: Changing this setting will not affect existing files.
     AWS_S3_REDUCED_REDUNDANCY = False
 
-    # A dictionary of additional metadata to set on the uploaded files.
-    # If the value is a callable, it will be called with the path of the file on S3.
+    # The Content-Disposition header used when the file is downloaded. This can be a string, or a function taking a
+    # single `name` argument.
+    # Important: Changing this setting will not affect existing files.
+    AWS_S3_CONTENT_DISPOSITION = ""
+
+    # The Content-Language header used when the file is downloaded. This can be a string, or a function taking a
+    # single `name` argument.
+    # Important: Changing this setting will not affect existing files.
+    AWS_S3_CONTENT_LANGUAGE = ""
+
+    # A mapping of custom metadata for each file. Each value can be a string, or a function taking a
+    # single `name` argument.
+    # Important: Changing this setting will not affect existing files.
     AWS_S3_METADATA = {}
 
-    # Whether to enable gzip compression for uploaded files.
+    # If True, then files will be stored using server-side encryption.
+    # Important: Changing this setting will not affect existing files.
+    AWS_S3_ENCRYPT_KEY = False
+
+    # If True, then text files will be stored using gzip content encoding. Files will only be gzipped if their
+    # compressed size is smaller than their uncompressed size.
+    # Important: Changing this setting will not affect existing files.
     AWS_S3_GZIP = True
 
-    # The S3 bucket used to store static files.
-    AWS_S3_BUCKET_NAME_STATIC = ""
 
-    # The S3 addressing style to use to connect to the static bucket ("auto", "path" and "virtual").
-    AWS_S3_ADDRESSING_STYLE_STATIC = "auto"
+**Important:** Several of these settings (noted above) will not affect existing files. To sync the new settings to
+existing files, run ``./manage.py s3_sync_meta django.core.files.storage.default_storage``.
 
-    # The endpoint to connect to for static files (only needed if you are using a non-AWS provider)
-    AWS_S3_ENDPOINT_URL_STATIC = ""
 
-    # Whether to enable querystring authentication for static files.
+Staticfiles storage settings
+----------------------------
+
+All of the available file storage settings are available for the staticfiles storage, sufficed with ``_STATIC``.
+You must provide at least `AWS_S3_BUCKET_NAME_STATIC`.
+
+The following staticfiles storage settings have different default values to their file storage counterparts.
+
+.. code:: python
+
     AWS_S3_BUCKET_AUTH_STATIC = False
 
-    # A prefix to add to the start of all static files.
-    AWS_S3_KEY_PREFIX_STATIC = ""
-
-    # The expire time used to access static files.
-    AWS_S3_MAX_AGE_SECONDS_STATIC = 60*60*24*365  # 1 year.
-
-    # A custom URL prefix to use for public-facing URLs for static files.
-    AWS_S3_PUBLIC_URL_STATIC = ""
-
-    # Whether to set the storage class of static files to REDUCED_REDUNDANCY.
-    AWS_S3_REDUCED_REDUNDANCY_STATIC = False
-
-    # A dictionary of additional metadata to set on the static files.
-    # If the value is a callable, it will be called with the path of the file on S3.
-    AWS_S3_METADATA_STATIC = {}
-
-    # Whether to enable gzip compression for static files.
-    AWS_S3_GZIP_STATIC = True
+    AWS_S3_MAX_AGE_SECONDS_STATIC =  60 * 60 * 24 * 365  # 1 year.
 
 
-**Important:** If you change any of the ``AWS_S3_BUCKET_AUTH`` or ``AWS_S3_MAX_AGE_SECONDS`` settings, you will need
-to run ``./manage.py s3_sync_meta path.to.your.storage`` before the changes will be applied to existing media files.
-
-
-How it works
-------------
-
-By default, uploaded user files are stored on Amazon S3 using the private access control level. When a URL for the file
-is generated, querystring auth with a timeout of 1 hour is used to secure access to the file.
-
-By default, static files are stored on Amazon S3 using the public access control level and aggressive caching.
-
-Text-based files, such as HTML, XML and JSON, are stored using gzip to save space and improve download
-performance.
-
-At the moment, files stored on S3 can only be opened in read-only mode.
+**Important:** Several of these settings (noted above) will not affect existing files. To sync the new settings to
+existing files, run ``./manage.py s3_sync_meta django.contrib.staticfiles.storage.staticfiles_storage``.
 
 
 Optimizing media file caching
 -----------------------------
 
-The default settings assume that user-uploaded file are private. This means that
-they are only accessible via S3 authenticated URLs, which is bad for browser caching.
+The default settings assume that media file are private. This means that they are only accessible via S3 authenticated URLs, which is bad for browser caching.
 
-To make user-uploaded files public, and enable aggressive caching, make the following changes to your ``settings.py``.
+To make media files public, and enable aggressive caching, make the following changes to your ``settings.py``.
 
 .. code:: python
 
     AWS_S3_BUCKET_AUTH = False
 
-    AWS_S3_MAX_AGE_SECONDS = 60*60*24*365  # 1 year.
+    AWS_S3_MAX_AGE_SECONDS = 60 * 60 * 24 * 365  # 1 year.
 
-**Important:** By making these changes, all user-uploaded files will be public. Ensure they do not contain confidential information.
+**Important:** By making these changes, all media files will be public. Ensure they do not contain confidential information.
 
-**Important:** If you change any of the ``AWS_S3_BUCKET_AUTH`` or ``AWS_S3_MAX_AGE_SECONDS`` settings, you will need
-to run ``./manage.py s3_sync_meta path.to.your.storage`` before the changes will be applied to existing media files.
+The default settings for staticfiles storage are already optimizing for aggressive caching.
 
 
 Management commands
@@ -164,12 +170,14 @@ that aims to do one thing very well.
 The author of django-s3-storage is not aware of significant differences in functionality with django-storages-redux.
 If you notice some differences, please file an issue!
 
+
 Migration from django-storages(non-redux)
 -----------------------------------------
 
 If your are updating a project that used `django-storages <https://pypi.python.org/pypi/django-storages/1.1.8>`_ just for S3 file storage, migration is trivial.
 
 Follow the installation instructions, replacing 'storages' in ``INSTALLED_APPS``. Be sure to scrutinize the rest of your settings file for changes, most notably ``AWS_S3_BUCKET_NAME`` for ``AWS_STORAGE_BUCKET_NAME``.
+
 
 Build status
 ------------

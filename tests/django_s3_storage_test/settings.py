@@ -16,6 +16,10 @@ AWS_S3_BUCKET_NAME = os.environ.get("AWS_S3_BUCKET_NAME")
 
 AWS_S3_KEY_PREFIX = uuid.uuid4().hex
 
+AWS_S3_BUCKET_NAME_STATIC = os.environ.get("AWS_S3_BUCKET_NAME")
+
+AWS_S3_KEY_PREFIX_STATIC = uuid.uuid4().hex
+
 DEFAULT_FILE_STORAGE = "django_s3_storage.storage.S3Storage"
 
 STATICFILES_STORAGE = "django_s3_storage.storage.StaticS3Storage"

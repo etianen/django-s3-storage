@@ -144,8 +144,8 @@ class TestS3Storage(SimpleTestCase):
             self.assertEqual(default_storage.listdir("bar/"), ([], ["bat.txt"]))
 
     def testSyncMeta(self):
-        with self.save_file(content=b"foo" * 1000):
-            meta = default_storage.meta("foo.txt")
+        with self.save_file(name="foo/bar.txt", content=b"foo" * 1000):
+            meta = default_storage.meta("foo/bar.txt")
             self.assertEqual(meta["CacheControl"], "private,max-age=3600")
             self.assertEqual(meta["ContentType"], "text/plain")
             self.assertEqual(meta["ContentEncoding"], "gzip")
@@ -169,20 +169,20 @@ class TestS3Storage(SimpleTestCase):
             ):
                 default_storage.sync_meta()
             # Check metadata changed.
-            meta = default_storage.meta("foo.txt")
+            meta = default_storage.meta("foo/bar.txt")
             self.assertEqual(meta["CacheControl"], "public,max-age=9999")
             self.assertEqual(meta["ContentType"], "text/plain")
             self.assertEqual(meta["ContentEncoding"], "gzip")
-            self.assertEqual(meta.get("ContentDisposition"), "attachment; filename=foo.txt")
+            self.assertEqual(meta.get("ContentDisposition"), "attachment; filename=foo/bar.txt")
             self.assertEqual(meta.get("ContentLanguage"), "eo")
             self.assertEqual(meta.get("Metadata"), {
                 "foo": "bar",
-                "baz": "foo.txt",
+                "baz": "foo/bar.txt",
             })
             self.assertEqual(meta["StorageClass"], "REDUCED_REDUNDANCY")
             self.assertEqual(meta["ServerSideEncryption"], "AES256")
             # Check ACL changed by removing the query string.
-            url_unauthenticated = urlunsplit(urlsplit(default_storage.url("foo.txt"))[:3] + ("", "",))
+            url_unauthenticated = urlunsplit(urlsplit(default_storage.url("foo/bar.txt"))[:3] + ("", "",))
             response = requests.get(url_unauthenticated)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content, b"foo" * 1000)

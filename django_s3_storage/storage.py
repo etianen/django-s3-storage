@@ -64,7 +64,7 @@ class S3Storage(Storage):
     An implementation of Django file storage over S3.
     """
 
-    DEFAULT_SETTINGS = {
+    default_settings = {
         "AWS_REGION": "us-east-1",
         "AWS_ACCESS_KEY_ID": "",
         "AWS_SECRET_ACCESS_KEY": "",
@@ -83,12 +83,12 @@ class S3Storage(Storage):
         "AWS_S3_GZIP": True,
     }
 
-    SETTING_SUFFIX = ""
+    setting_suffix = ""
 
     def _setup(self):
         self.settings = type(force_str("Settings"), (), {})()
         # Configure own settings.
-        for setting_key, setting_default_value in self.DEFAULT_SETTINGS.items():
+        for setting_key, setting_default_value in self.default_settings.items():
             setattr(
                 self.settings,
                 setting_key,
@@ -98,7 +98,7 @@ class S3Storage(Storage):
                     # Try to read setting from suffixed setting.
                     getattr(
                         settings,
-                        setting_key + self.SETTING_SUFFIX,
+                        setting_key + self.setting_suffix,
                         # Try to read setting from non-suffixed setting.
                         getattr(
                             settings,
@@ -134,7 +134,7 @@ class S3Storage(Storage):
     def __init__(self, **kwargs):
         # Check for unknown kwargs.
         for kwarg_key in kwargs.keys():
-            if kwarg_key.upper() not in self.DEFAULT_SETTINGS:
+            if kwarg_key.upper() not in self.default_settings:
                 raise ImproperlyConfigured("Unknown S3Storage parameter: {}".format(kwarg_key))
         # Set up the storage.
         self._kwargs = kwargs
@@ -360,13 +360,13 @@ class StaticS3Storage(S3Storage):
     An S3 storage for storing static files.
     """
 
-    DEFAULT_SETTINGS = S3Storage.DEFAULT_SETTINGS.copy()
-    DEFAULT_SETTINGS.update({
+    default_settings = S3Storage.default_settings.copy()
+    default_settings.update({
         "AWS_S3_BUCKET_AUTH": False,
         "AWS_S3_MAX_AGE_SECONDS": 60 * 60 * 24 * 365,  # 1 year.
     })
 
-    SETTING_SUFFIX = "_STATIC"
+    setting_suffix = "_STATIC"
 
 
 class ManifestStaticS3Storage(ManifestFilesMixin, StaticS3Storage):

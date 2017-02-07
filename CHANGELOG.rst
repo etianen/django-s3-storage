@@ -7,10 +7,11 @@ django-s3-storage changelog
 - Switched to `boto3`-based implementation.
 - Added `AWS_S3_CONTENT_DISPOSITION` and `AWS_S3_CONTENT_LANGUAGE` settings.
 - Added `AWS_S3_CONTENT_DISPOSITION_STATIC` and `AWS_S3_CONTENT_LANGUAGE_STATIC` settings.
-- *Breaking*: `AWS_S3_HOST` setting refactored to `AWS_S3_ENDPOINT_URL`.
-- *Breaking*: `AWS_S3_HOST_STATIC` setting refactored to `AWS_S3_ENDPOINT_URL_STATIC`.
-- *Breaking*: `AWS_S3_CALLING_FORMAT` setting refactored to `AWS_S3_ADDRESSING_STYLE`.
-- *Breaking*: `AWS_S3_CALLING_FORMAT_STATIC` setting refactored to `AWS_S3_ADDRESSING_STYLE_STATIC`.
+- *Breaking:* Setting Content-Disposition and Content-Language headers via `AWS_S3_METADATA` setting no longer supported.
+- *Breaking:* `AWS_S3_HOST` setting refactored to `AWS_S3_ENDPOINT_URL`.
+- *Breaking:* `AWS_S3_HOST_STATIC` setting refactored to `AWS_S3_ENDPOINT_URL_STATIC`.
+- *Breaking:* `AWS_S3_CALLING_FORMAT` setting refactored to `AWS_S3_ADDRESSING_STYLE`.
+- *Breaking:* `AWS_S3_CALLING_FORMAT_STATIC` setting refactored to `AWS_S3_ADDRESSING_STYLE_STATIC`.
 
 
 0.9.11

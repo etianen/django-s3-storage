@@ -156,6 +156,42 @@ Several settings (noted above) will not affect existing files. Run this command 
 Example usage: ``./manage.py s3_sync_meta django.core.files.storage.default_storage``
 
 
+IAM permissions
+---------------
+
+In order to use all features of django-s3-storages, either authenticate with your AWS root credentials (not recommended), or create a dedicated IAM role. The minimum set of permissions required by django-s3-storage is:
+
+.. code::
+
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:ListBucket"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::my-bucket"
+                ]
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:PutObject",
+                    "s3:PutObjectAcl",
+                    "s3:GetObject",
+                    "s3:GetObjectAcl",
+                    "s3:DeleteObject"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::my-bucket/*"
+                ]
+            }
+        ]
+    }
+
+
 How does django-s3-storage compare with django-storages?
 --------------------------------------------------------
 

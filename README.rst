@@ -146,8 +146,8 @@ The default settings for staticfiles storage are already optimizing for aggressi
 Management commands
 -------------------
 
-`s3_sync_meta`
-~~~~~~~~~~~~~~
+``s3_sync_meta``
+~~~~~~~~~~~~~~~~
 
 Syncronizes the meta information on S3 files.
 

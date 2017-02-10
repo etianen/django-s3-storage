@@ -114,6 +114,11 @@ class TestS3Storage(SimpleTestCase):
         with self.save_file():
             self.assertTrue(default_storage.exists("foo.txt"))
 
+    def testExistsRelative(self):
+        self.assertFalse(default_storage.exists("admin/css/../img/sorting-icons.svg"))
+        with self.save_file("admin/img/sorting-icons.svg"):
+            self.assertTrue(default_storage.exists("admin/css/../img/sorting-icons.svg"))
+
     def testSize(self):
         with self.save_file():
             self.assertEqual(default_storage.size("foo.txt"), 3)

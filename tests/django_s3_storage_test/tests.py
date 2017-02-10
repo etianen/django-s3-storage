@@ -2,10 +2,7 @@
 from __future__ import unicode_literals
 from contextlib import contextmanager
 from datetime import datetime, timedelta
-from unittest import skipIf
-import os
 import requests
-import django
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -58,10 +55,6 @@ class TestS3Storage(SimpleTestCase):
 
     # Storage tests.
 
-    @skipIf(django.VERSION < (1, 10), "Feature not supported by Django")
-    def testGenerateFilename(self):
-        self.assertEqual(default_storage.generate_filename(os.path.join("foo", ".", "bar.txt")), "foo/bar.txt")
-
     def testOpenMissing(self):
         self.assertRaises(IOError, lambda: default_storage.open("foo.txt"))
 
@@ -113,6 +106,11 @@ class TestS3Storage(SimpleTestCase):
         self.assertFalse(default_storage.exists("foo.txt"))
         with self.save_file():
             self.assertTrue(default_storage.exists("foo.txt"))
+
+    def testExistsRelative(self):
+        self.assertFalse(default_storage.exists("admin/css/../img/sorting-icons.svg"))
+        with self.save_file("admin/img/sorting-icons.svg"):
+            self.assertTrue(default_storage.exists("admin/css/../img/sorting-icons.svg"))
 
     def testSize(self):
         with self.save_file():

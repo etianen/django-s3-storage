@@ -1,5 +1,7 @@
 dist: trusty
 language: python
+python:
+- 3.5
 sudo: false
 env:
   global:
@@ -11,19 +13,13 @@ env:
   - secure: "N0FrVtz+PdOH4wFKUTNxcAD1pmTyz2et9mroGV/uRPrIo/zXRBrj3zHdjneZGw+5m+5O246qgprAXtsj61YusGXGYmdr9B5bHyAzVD2T+5slyN37dZVfHPMx55PCMBUdG1aMbNTAE8G7AmwyKt5ujIZliDOERxjqzFsHrNCf8Ks="
   # AWS_S3_BUCKET_NAME
   - secure: "J9RE3MbU26kmTg5y8WwMD0RnW99SxjJvNY4uFfdbDuPlAn6BV9BQuq1qaPYGksdYdJ8WmXhlRKIhjXjZIgvIEzDQ0msPbJ3dU7uCJFrZRVG3I/jbZR0EfcOiWCaDuQU2TDZw5bo4qanTr4nnZpnBVqj0erjytxUkyqIuRAR3xOg="
-matrix:
-  fast_finish: true
 cache:
   directories:
   - "$HOME/.cache/pip"
 before_install:
-  # Install the latest version of pyenv.
-  - rm -rf ~/.pyenv
-  - curl -L https://raw.githubusercontent.com/yyuu/pyenv-installer/master/bin/pyenv-installer | bash
-  # Install python.
-  - pyenv install 2.7.13
-  - pyenv install 3.5.2
-  - pyenv install 3.6.0
+- rm -rf ~/.pyenv
+- curl -L https://raw.githubusercontent.com/yyuu/pyenv-installer/master/bin/pyenv-installer | bash
+- cat .python-version | xargs -n 1 pyenv install
 install:
 - pip install 'tox>=2.3.1'
 script: tox

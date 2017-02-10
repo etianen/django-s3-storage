@@ -148,15 +148,12 @@ class S3Storage(Storage):
         # All done!
         super(S3Storage, self).__init__()
 
-    def generate_filename(self, name):
-        return posixpath.normpath(super(S3Storage, self).generate_filename(name).replace(os.sep, "/"))
-
     # Helpers.
 
     def _get_key_name(self, name):
         if name.startswith("/"):
             name = name[1:]
-        return posixpath.join(self.settings.AWS_S3_KEY_PREFIX, name)
+        return posixpath.normpath(posixpath.join(self.settings.AWS_S3_KEY_PREFIX, name.replace(os.sep, "/")))
 
     def _object_params(self, name):
         params = {
@@ -270,7 +267,6 @@ class S3Storage(Storage):
     def exists(self, name):
         # We also need to check for directory existence, so we'll list matching
         # keys and return success if any match.
-        name = posixpath.normpath(name)
         results = self.s3_connection.list_objects_v2(
             Bucket=self.settings.AWS_S3_BUCKET_NAME,
             MaxKeys=1,
@@ -279,9 +275,7 @@ class S3Storage(Storage):
         return bool(results["KeyCount"])
 
     def listdir(self, path):
-        if not path.endswith("/"):
-            path += "/"
-        path = self._get_key_name(path)
+        path = self._get_key_name(path) + "/"
         # Look through the paths, parsing out directories and paths.
         files = []
         dirs = []

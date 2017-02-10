@@ -1,6 +1,12 @@
 django-s3-storage changelog
 ===========================
 
+0.11.0
+------
+
+- *Breaking:* All S3 keys are normalized to use unix-style path separators, and resolve relative paths.
+
+
 0.10.0
 ------
 

@@ -270,6 +270,7 @@ class S3Storage(Storage):
     def exists(self, name):
         # We also need to check for directory existence, so we'll list matching
         # keys and return success if any match.
+        name = posixpath.normpath(name)
         results = self.s3_connection.list_objects_v2(
             Bucket=self.settings.AWS_S3_BUCKET_NAME,
             MaxKeys=1,

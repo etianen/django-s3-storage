@@ -330,7 +330,13 @@ class S3Storage(Storage):
         for page in pages:
             for entry in page.get("Contents", ()):
                 name = posixpath.relpath(entry["Key"], self.settings.AWS_S3_KEY_PREFIX)
-                obj = self.meta(name)
+                try:
+                    obj = self.meta(name)
+                except OSError:
+                    # This may be caused by a race condition, with the entry being deleted before it was accessed.
+                    # Alternatively, the key may be something that, when normalized, has a different path, which will
+                    # mean that the key's meta cannot be accessed.
+                    continue
                 put_params = self._object_put_params(name)
                 # Set content encoding.
                 content_encoding = obj.get("ContentEncoding")

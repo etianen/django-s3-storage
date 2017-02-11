@@ -29,7 +29,7 @@ def _wrap_errors(func):
         try:
             return func(self, name, *args, **kwargs)
         except ClientError as ex:
-            raise IOError("S3Storage error at {!r}: {}".format(name, force_text(ex)))
+            raise OSError("S3Storage error at {!r}: {}".format(name, force_text(ex)))
     return _do_wrap_errors
 
 

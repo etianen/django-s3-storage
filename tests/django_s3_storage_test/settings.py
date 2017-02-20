@@ -5,6 +5,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 SECRET_KEY = "test"
 
+USE_TZ = True
+
+TIME_ZONE = "UTC"
+
 
 # S3 settings.
 

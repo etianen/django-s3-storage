@@ -20,7 +20,7 @@ from django.contrib.staticfiles.storage import ManifestFilesMixin
 from django.utils.six.moves.urllib.parse import urlsplit, urlunsplit, urljoin
 from django.utils.deconstruct import deconstructible
 from django.utils.encoding import force_bytes, filepath_to_uri, force_text, force_str
-from django.utils.timezone import make_naive
+from django.utils.timezone import make_naive, utc
 
 
 def _wrap_errors(func):
@@ -319,7 +319,7 @@ class S3Storage(Storage):
         return self.modified_time(name)
 
     def modified_time(self, name):
-        return make_naive(self.meta(name)["LastModified"])
+        return make_naive(self.meta(name)["LastModified"], utc)
 
     def sync_meta_iter(self):
         paginator = self.s3_connection.get_paginator("list_objects_v2")

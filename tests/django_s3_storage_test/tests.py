@@ -1,7 +1,7 @@
 # coding=utf-8
 from __future__ import unicode_literals
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import timedelta
 import requests
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
@@ -11,6 +11,8 @@ from django.contrib.staticfiles.storage import staticfiles_storage
 from django.test import SimpleTestCase
 from django.utils.six import StringIO
 from django.utils.six.moves.urllib.parse import urlsplit, urlunsplit
+from django.utils import timezone
+from django.utils.timezone import make_naive, utc
 from django_s3_storage.storage import S3Storage, StaticS3Storage
 
 
@@ -126,7 +128,7 @@ class TestS3Storage(SimpleTestCase):
         with self.save_file():
             modified_time = default_storage.modified_time("foo.txt")
             # Check that the timestamps are roughly equals.
-            self.assertLess(abs(modified_time - datetime.now()), timedelta(seconds=10))
+            self.assertLess(abs(modified_time - make_naive(timezone.now(), utc)), timedelta(seconds=10))
             # All other timestamps are slaved to modified time.
             self.assertEqual(default_storage.accessed_time("foo.txt"), modified_time)
             self.assertEqual(default_storage.created_time("foo.txt"), modified_time)

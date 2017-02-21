@@ -1,11 +1,12 @@
 django-s3-storage changelog
 ===========================
 
-0.11.1 - Development
---------------------
+0.11.1
+------
 
 - Raising ``OSError`` instead of ``IOError`` if S3 storage throws an error. On Python 3 it makes no difference, but on Python 2 it's what collectstatic expects.
 - Fixed issue with ``s3_sync_meta`` where a race condition or key name normalization could cause an ``OSError`` to be raised.
+- Fixed `modified_time()` on non-UTC machines.
 
 
 0.11.0

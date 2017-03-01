@@ -224,6 +224,7 @@ class S3Storage(Storage):
             temp_file.seek(0)
             content = temp_file
         # Calculate the content type.
+        mimetypes.add_type('application/font-woff', '.woff')
         content_type, _ = mimetypes.guess_type(name, strict=False)
         content_type = content_type or "application/octet-stream"
         put_params["ContentType"] = content_type

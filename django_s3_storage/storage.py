@@ -312,14 +312,16 @@ class S3Storage(Storage):
         # All done!
         return url
 
-    def accessed_time(self, name):
-        return self.modified_time(name)
-
-    def created_time(self, name):
-        return self.modified_time(name)
-
     def modified_time(self, name):
         return make_naive(self.meta(name)["LastModified"], utc)
+
+    created_time = accessed_time = modified_time
+
+    def get_modified_time(self, name):
+        timestamp = self.meta(name)["LastModified"]
+        return timestamp if settings.USE_TZ else make_naive(timestamp)
+
+    get_created_time = get_accessed_time = get_modified_time
 
     def sync_meta_iter(self):
         paginator = self.s3_connection.get_paginator("list_objects_v2")

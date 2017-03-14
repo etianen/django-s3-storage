@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 from contextlib import contextmanager
 from datetime import timedelta
+import pytz
 import requests
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
@@ -12,7 +13,7 @@ from django.test import SimpleTestCase
 from django.utils.six import StringIO
 from django.utils.six.moves.urllib.parse import urlsplit, urlunsplit
 from django.utils import timezone
-from django.utils.timezone import make_naive, utc
+from django.utils.timezone import is_naive, make_naive, utc
 from django_s3_storage.storage import S3Storage, StaticS3Storage
 
 
@@ -132,6 +133,26 @@ class TestS3Storage(SimpleTestCase):
             # All other timestamps are slaved to modified time.
             self.assertEqual(default_storage.accessed_time("foo.txt"), modified_time)
             self.assertEqual(default_storage.created_time("foo.txt"), modified_time)
+
+    def testGetModifiedTime(self):
+        tzname = "America/Argentina/Buenos_Aires"
+        with self.settings(USE_TZ=False, TIME_ZONE=tzname), self.save_file():
+            modified_time = default_storage.get_modified_time("foo.txt")
+            self.assertTrue(is_naive(modified_time))
+            # Check that the timestamps are roughly equals in the correct timezone
+            self.assertLess(abs(modified_time - make_naive(timezone.now(), pytz.timezone(tzname))), timedelta(seconds=10))
+            # All other timestamps are slaved to modified time.
+            self.assertEqual(default_storage.get_accessed_time("foo.txt"), modified_time)
+            self.assertEqual(default_storage.get_created_time("foo.txt"), modified_time)
+
+        with self.save_file():
+            modified_time = default_storage.get_modified_time("foo.txt")
+            self.assertFalse(is_naive(modified_time))
+            # Check that the timestamps are roughly equals
+            self.assertLess(abs(modified_time - timezone.now()))
+            # All other timestamps are slaved to modified time.
+            self.assertEqual(default_storage.get_accessed_time("foo.txt"), modified_time)
+            self.assertEqual(default_storage.get_created_time("foo.txt"), modified_time)
 
     def testListdir(self):
         self.assertEqual(default_storage.listdir(""), ([], []))

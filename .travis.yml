@@ -22,7 +22,9 @@ before_install:
 - cat .python-version | xargs -n 1 pyenv install
 install:
 - pip install 'tox>=2.3.1'
-script: tox
+script:
+- 'if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then tox -e flake8; fi'
+- 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then tox; fi'
 notifications:
   email: false
 deploy:

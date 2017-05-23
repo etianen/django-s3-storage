@@ -2,7 +2,6 @@
 from __future__ import unicode_literals
 from contextlib import contextmanager
 from datetime import timedelta
-import pytz
 import requests
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
@@ -140,7 +139,9 @@ class TestS3Storage(SimpleTestCase):
             modified_time = default_storage.get_modified_time("foo.txt")
             self.assertTrue(is_naive(modified_time))
             # Check that the timestamps are roughly equals in the correct timezone
-            self.assertLess(abs(modified_time - make_naive(timezone.now(), pytz.timezone(tzname))), timedelta(seconds=10))
+            self.assertLess(
+                abs(modified_time - timezone.now()),
+                timedelta(seconds=10))
             # All other timestamps are slaved to modified time.
             self.assertEqual(default_storage.get_accessed_time("foo.txt"), modified_time)
             self.assertEqual(default_storage.get_created_time("foo.txt"), modified_time)
@@ -149,7 +150,9 @@ class TestS3Storage(SimpleTestCase):
             modified_time = default_storage.get_modified_time("foo.txt")
             self.assertFalse(is_naive(modified_time))
             # Check that the timestamps are roughly equals
-            self.assertLess(abs(modified_time - timezone.now()))
+            self.assertLess(
+                abs(modified_time - timezone.now()),
+                timedelta(seconds=10))
             # All other timestamps are slaved to modified time.
             self.assertEqual(default_storage.get_accessed_time("foo.txt"), modified_time)
             self.assertEqual(default_storage.get_created_time("foo.txt"), modified_time)

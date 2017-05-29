@@ -275,7 +275,8 @@ class S3Storage(Storage):
         return bool(results["KeyCount"])
 
     def listdir(self, path):
-        path = self._get_key_name(path) + "/"
+        path = self._get_key_name(path)
+        path = "" if path == "." else path + "/"
         # Look through the paths, parsing out directories and paths.
         files = []
         dirs = []

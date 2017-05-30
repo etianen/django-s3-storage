@@ -1,6 +1,14 @@
 django-s3-storage changelog
 ===========================
 
+0.11.2
+------
+
+- Bugfix: Fixed ``listdir()`` at bucket root returning an empty list (@aaugustin).
+- Added ``get_modified_time`` support (@jschneier).
+- Testing against Django 1.11 (@matthiask).
+
+
 0.11.1
 ------
 

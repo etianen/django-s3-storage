@@ -84,7 +84,7 @@ class S3Storage(Storage):
         "AWS_S3_METADATA": {},
         "AWS_S3_ENCRYPT_KEY": False,
         "AWS_S3_GZIP": True,
-        "AWS_S3_SIGNATURE_VERSION": None,
+        "AWS_S3_SIGNATURE_VERSION": "s3v4",
     }
 
     s3_settings_suffix = ""

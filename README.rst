@@ -101,6 +101,9 @@ Use the following settings to configure the S3 file storage. You must provide at
     # Important: Changing this setting will not affect existing files.
     AWS_S3_GZIP = True
 
+    # Set to 's3v4' to use the current signature for S3 requests
+    AWS_S3_SIGNATURE_VERSION = None
+
 
 **Important:** Several of these settings (noted above) will not affect existing files. To sync the new settings to
 existing files, run ``./manage.py s3_sync_meta django.core.files.storage.default_storage``.

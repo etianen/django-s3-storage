@@ -101,7 +101,7 @@ Use the following settings to configure the S3 file storage. You must provide at
     # Important: Changing this setting will not affect existing files.
     AWS_S3_GZIP = True
 
-    # Set to 's3v4' to use the current signature for S3 requests
+    # The signature version to use for S3 requests.
     AWS_S3_SIGNATURE_VERSION = None
 
 

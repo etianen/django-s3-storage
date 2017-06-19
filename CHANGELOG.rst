@@ -1,6 +1,13 @@
 django-s3-storage changelog
 ===========================
 
+In development
+--------------
+
+- Added `AWS_S3_SIGNATURE_VERSION` setting.
+- *Breaking* Changed the default signature version for S3 to v4.
+  According to the `AWS documentation <http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region>` all S3 regions support v4 (but not all support v2).
+
 0.11.2
 ------
 

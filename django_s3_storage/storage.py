@@ -85,6 +85,7 @@ class S3Storage(Storage):
         "AWS_S3_ENCRYPT_KEY": False,
         "AWS_S3_GZIP": True,
         "AWS_S3_SIGNATURE_VERSION": "s3v4",
+        "AWS_S3_FILE_OVERWRITE": False
     }
 
     s3_settings_suffix = ""
@@ -358,6 +359,15 @@ class S3Storage(Storage):
                     **put_params
                 )
                 yield name
+
+    def get_available_name(self, name, max_length=None):
+        if self.settings.AWS_S3_FILE_OVERWRITE:
+            name = self._clean_name(name)
+            return name
+        return super(S3Storage, self).get_available_name(name, max_length)
+
+    def _clean_name(self, name):
+        return os.path.normpath(name).replace('\\', '/')
 
     def sync_meta(self):
         for path in self.sync_meta_iter():

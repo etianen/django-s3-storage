@@ -58,7 +58,7 @@ class TestS3Storage(SimpleTestCase):
     # Storage tests.
 
     def testOpenMissing(self):
-        self.assertRaises(OSError, lambda: default_storage.open("foo.txt"))
+        self.assertRaises(IOError, lambda: default_storage.open("foo.txt"))
 
     def testOpenWriteMode(self):
         self.assertRaises(ValueError, lambda: default_storage.open("foo.txt", "wb"))

@@ -29,7 +29,7 @@ def _wrap_errors(func):
         try:
             return func(self, name, *args, **kwargs)
         except ClientError as ex:
-            raise OSError("S3Storage error at {!r}: {}".format(name, force_text(ex)))
+            raise IOError("S3Storage error at {!r}: {}".format(name, force_text(ex)))
     return _do_wrap_errors
 
 
@@ -335,7 +335,7 @@ class S3Storage(Storage):
                 name = posixpath.relpath(entry["Key"], self.settings.AWS_S3_KEY_PREFIX)
                 try:
                     obj = self.meta(name)
-                except OSError:
+                except IOError:
                     # This may be caused by a race condition, with the entry being deleted before it was accessed.
                     # Alternatively, the key may be something that, when normalized, has a different path, which will
                     # mean that the key's meta cannot be accessed.

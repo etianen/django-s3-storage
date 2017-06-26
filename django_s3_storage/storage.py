@@ -276,7 +276,7 @@ class S3Storage(Storage):
     def delete(self, name):
         self.s3_connection.delete_object(**self._object_params(name))
 
-    def exists(self, name):
+    def directory_exists(self, name):
         # We also need to check for directory existence, so we'll list matching
         # keys and return success if any match.
         results = self.s3_connection.list_objects_v2(
@@ -285,6 +285,38 @@ class S3Storage(Storage):
             Prefix=self._get_key_name(name),
         )
         return bool(results["KeyCount"])
+
+    def exists(self, name):
+        """
+        Find out of the file exists already in s3.
+
+        We check to see if this is a directory, if it is, we then use
+        directory_exists() to find out if it exists in s3. We need to do things
+        differently when it is a directory since s3 doesn't treat them the
+        same way as files.
+
+        If not a directory, then we will make a HEAD call and see if the
+        file exists without throwing an error.
+        """
+        if name and name.endswith("/"):
+            # it is a directory
+            return self.directory_exists(name)
+        # it is not a directory, check if the object exists by using the
+        # head object call, which makes a HEAD http request. If the call
+        # doesn't throw an error, then we know it exists.
+        try:
+            self.s3_connection.head_object(
+                Bucket=self.settings.AWS_S3_BUCKET_NAME,
+                Key=self._get_key_name(name))
+            # we got an object with no exception, the file exists.
+            return True
+        except ClientError as e:
+            if e.response['Error']['Code'] == "404":
+                # file doesn't exist
+                return False
+            else:
+                # it wasn't an error we were expecting, raise it up
+                raise e
 
     def listdir(self, path):
         path = self._get_key_name(path)

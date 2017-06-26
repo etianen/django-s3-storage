@@ -23,6 +23,16 @@ from django.utils.encoding import force_bytes, filepath_to_uri, force_text, forc
 from django.utils.timezone import make_naive, utc
 
 
+# Some parts of Django expect an IOError, other parts expect an OSError, so this class inherits both!
+# In Python 3, the distinction is irrelevant, but in Python 2 they are distinct classes.
+if OSError is IOError:
+    class S3Error(OSError):
+        pass
+else:
+    class S3Error(OSError, IOError):
+        pass
+
+
 def _wrap_errors(func):
     @wraps(func)
     def _do_wrap_errors(self, name, *args, **kwargs):

@@ -84,6 +84,7 @@ class S3Storage(Storage):
         "AWS_S3_METADATA": {},
         "AWS_S3_ENCRYPT_KEY": False,
         "AWS_S3_GZIP": True,
+        "AWS_S3_SIGNATURE_VERSION": "s3v4",
     }
 
     s3_settings_suffix = ""
@@ -124,6 +125,7 @@ class S3Storage(Storage):
             connection_kwargs["endpoint_url"] = self.settings.AWS_S3_ENDPOINT_URL
         self.s3_connection = boto3.client("s3", config=Config(
             s3={"addressing_style": self.settings.AWS_S3_ADDRESSING_STYLE},
+            signature_version=self.settings.AWS_S3_SIGNATURE_VERSION,
         ), **connection_kwargs)
 
     def _setting_changed_received(self, setting, **kwargs):

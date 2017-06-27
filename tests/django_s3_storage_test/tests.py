@@ -13,7 +13,7 @@ from django.utils.six import StringIO
 from django.utils.six.moves.urllib.parse import urlsplit, urlunsplit
 from django.utils import timezone
 from django.utils.timezone import is_naive, make_naive, utc
-from django_s3_storage.storage import S3Storage, StaticS3Storage
+from django_s3_storage.storage import S3Error, S3Storage, StaticS3Storage
 
 
 class TestS3Storage(SimpleTestCase):
@@ -58,7 +58,7 @@ class TestS3Storage(SimpleTestCase):
     # Storage tests.
 
     def testOpenMissing(self):
-        self.assertRaises(IOError, lambda: default_storage.open("foo.txt"))
+        self.assertRaises(S3Error, lambda: default_storage.open("foo.txt"))
 
     def testOpenWriteMode(self):
         self.assertRaises(ValueError, lambda: default_storage.open("foo.txt", "wb"))

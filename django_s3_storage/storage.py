@@ -39,7 +39,7 @@ def _wrap_errors(func):
         try:
             return func(self, name, *args, **kwargs)
         except ClientError as ex:
-            raise IOError("S3Storage error at {!r}: {}".format(name, force_text(ex)))
+            raise S3Error("S3Storage error at {!r}: {}".format(name, force_text(ex)))
     return _do_wrap_errors
 
 
@@ -277,14 +277,23 @@ class S3Storage(Storage):
         self.s3_connection.delete_object(**self._object_params(name))
 
     def exists(self, name):
-        # We also need to check for directory existence, so we'll list matching
-        # keys and return success if any match.
-        results = self.s3_connection.list_objects_v2(
-            Bucket=self.settings.AWS_S3_BUCKET_NAME,
-            MaxKeys=1,
-            Prefix=self._get_key_name(name),
-        )
-        return bool(results["KeyCount"])
+        if name.endswith("/"):
+            # This looks like a directory, but on S3 directories are virtual, so we need to see if the key starts
+            # with this prefix.
+            results = self.s3_connection.list_objects_v2(
+                Bucket=self.settings.AWS_S3_BUCKET_NAME,
+                MaxKeys=1,
+                Prefix=self._get_key_name(name),
+            )
+            return bool(results["KeyCount"])
+        # This may be a file or a directory. Check if getting the file metadata throws an error.
+        try:
+            self.meta(name)
+        except S3Error:
+            # It's not a file, but it might be a directory. Check again that it's not a directory.
+            return self.exists(name + "/")
+        else:
+            return True
 
     def listdir(self, path):
         path = self._get_key_name(path)
@@ -347,7 +356,7 @@ class S3Storage(Storage):
                 name = posixpath.relpath(entry["Key"], self.settings.AWS_S3_KEY_PREFIX)
                 try:
                     obj = self.meta(name)
-                except IOError:
+                except S3Error:
                     # This may be caused by a race condition, with the entry being deleted before it was accessed.
                     # Alternatively, the key may be something that, when normalized, has a different path, which will
                     # mean that the key's meta cannot be accessed.

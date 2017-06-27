@@ -7,6 +7,9 @@ In development
 - Added `AWS_S3_SIGNATURE_VERSION` setting.
 - Changed the default signature version for S3 to v4.
   According to the `AWS documentation <http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region>`_ all S3 regions support v4 (but not all support v2).
+- Raising ``S3Error`` instead of ``OSError`` if S3 storage throws an error. ``S3Error`` inherits from both ``OSError`` and ``IOError``.
+- Better checking for directory existance (@kencochrane, @etianen).
+
 
 0.11.2
 ------

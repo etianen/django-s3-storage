@@ -9,6 +9,7 @@ In development
   According to the `AWS documentation <http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region>`_ all S3 regions support v4 (but not all support v2).
 - Raising ``S3Error`` instead of ``OSError`` if S3 storage throws an error. ``S3Error`` inherits from both ``OSError`` and ``IOError``.
 - Better checking for directory existance (@kencochrane, @etianen).
+- Added ``AWS_S3_FILE_OVERWRITE `` setting (@Edke).
 
 
 0.11.2

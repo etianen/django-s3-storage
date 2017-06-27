@@ -380,7 +380,6 @@ class S3Storage(Storage):
                 yield name
 
     def get_available_name(self, name, max_length=None):
-        name = self._get_key_name(name)
         if self.settings.AWS_S3_FILE_OVERWRITE:
             return name
         return super(S3Storage, self).get_available_name(name, max_length)

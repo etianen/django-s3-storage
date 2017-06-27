@@ -220,6 +220,17 @@ class TestS3Storage(SimpleTestCase):
             self.assertEqual(name, "foo.txt")
             self.assertEqual(default_storage.open(name).read(), b"foo")
 
+    def testNonOverwrite(self):
+        with self.save_file() as name_1, self.save_file() as name_2:
+            self.assertEqual(name_1, "foo.txt")
+            self.assertNotEqual(name_1, name_2)
+
+    def testOverwrite(self):
+        with self.settings(AWS_S3_FILE_OVERWRITE=True):
+            with self.save_file() as name_1, self.save_file() as name_2:
+                self.assertEqual(name_1, "foo.txt")
+                self.assertEqual(name_2, "foo.txt")
+
     # Static storage tests.
 
     def testStaticSettings(self):

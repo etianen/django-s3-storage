@@ -108,6 +108,12 @@ class TestS3Storage(SimpleTestCase):
         self.assertFalse(default_storage.exists("foo.txt"))
         with self.save_file():
             self.assertTrue(default_storage.exists("foo.txt"))
+            self.assertFalse(default_storage.exists("fo"))
+
+    def testExistsDir(self):
+        self.assertFalse(default_storage.exists("foo/"))
+        with self.save_file(name="foo/bar.txt"):
+            self.assertTrue(default_storage.exists("foo/"))
 
     def testExistsRelative(self):
         self.assertFalse(default_storage.exists("admin/css/../img/sorting-icons.svg"))

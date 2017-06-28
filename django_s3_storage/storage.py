@@ -284,7 +284,7 @@ class S3Storage(Storage):
             results = self.s3_connection.list_objects_v2(
                 Bucket=self.settings.AWS_S3_BUCKET_NAME,
                 MaxKeys=1,
-                Prefix=self._get_key_name(name),
+                Prefix=self._get_key_name(name) + "/",  # Add the slash again, since _get_key_name removes it.
             )
             return bool(results["KeyCount"])
         # This may be a file or a directory. Check if getting the file metadata throws an error.

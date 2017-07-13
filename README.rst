@@ -201,21 +201,19 @@ In order to use all features of django-s3-storages, either authenticate with you
 How does django-s3-storage compare with django-storages?
 --------------------------------------------------------
 
-The `django-storages-redux <https://github.com/jschneier/django-storages>`_ fork of django-storages appears to be
-the most widely used S3 storage backend for Django. It also supports a variety of other storage backends.
+`django-storages <https://github.com/jschneier/django-storages>`_ supports a variety of other storage backends,
+whereas django-s3-storage provides similar features, but only supports S3. It was originally written to support
+Python 3 at a time when the future of django-storages was unclear. It's a small, well-tested and self-contained
+library that aims to do one thing very well.
 
-django-s3-storage provides similar features, but only supports S3. It was originally written to support Python 3
-at a time when the future of django-storages was unclear. It's a small, well-tested and self-contained library
-that aims to do one thing very well.
-
-The author of django-s3-storage is not aware of significant differences in functionality with django-storages-redux.
+The author of django-s3-storage is not aware of significant differences in functionality with django-storages.
 If you notice some differences, please file an issue!
 
 
-Migration from django-storages (non-redux)
-------------------------------------------
+Migration from django-storages
+------------------------------
 
-If your are updating a project that used `django-storages <https://pypi.python.org/pypi/django-storages/1.1.8>`_ just for S3 file storage, migration is trivial.
+If your are updating a project that used `django-storages <https://pypi.python.org/pypi/django-storages>`_ just for S3 file storage, migration is trivial.
 
 Follow the installation instructions, replacing 'storages' in ``INSTALLED_APPS``. Be sure to scrutinize the rest of your settings file for changes, most notably ``AWS_S3_BUCKET_NAME`` for ``AWS_STORAGE_BUCKET_NAME``.
 

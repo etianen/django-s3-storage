@@ -241,7 +241,6 @@ class TestS3Storage(SimpleTestCase):
 
     def testStaticSettings(self):
         self.assertEqual(staticfiles_storage.settings.AWS_S3_BUCKET_AUTH, False)
-        self.assertEqual(staticfiles_storage.settings.AWS_S3_MAX_AGE_SECONDS, 31536000)
 
     def testStaticUrl(self):
         with self.save_file(storage=staticfiles_storage):
@@ -252,7 +251,7 @@ class TestS3Storage(SimpleTestCase):
             # The URL should be accessible, but be marked as public.
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.content, b"foo")
-            self.assertEqual(response.headers["cache-control"], "public,max-age=31536000")
+            self.assertEqual(response.headers["cache-control"], "public,max-age=3600")
 
     # Management commands.
 

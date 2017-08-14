@@ -124,8 +124,6 @@ The following staticfiles storage settings have different default values to thei
 
     AWS_S3_BUCKET_AUTH_STATIC = False
 
-    AWS_S3_MAX_AGE_SECONDS_STATIC =  60 * 60 * 24 * 365  # 1 year.
-
 
 **Important:** Several of these settings (noted above) will not affect existing files. To sync the new settings to
 existing files, run ``./manage.py s3_sync_meta django.contrib.staticfiles.storage.staticfiles_storage``.

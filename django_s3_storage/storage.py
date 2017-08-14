@@ -398,7 +398,6 @@ class StaticS3Storage(S3Storage):
     default_s3_settings = S3Storage.default_s3_settings.copy()
     default_s3_settings.update({
         "AWS_S3_BUCKET_AUTH": False,
-        "AWS_S3_MAX_AGE_SECONDS": 60 * 60 * 24 * 365,  # 1 year.
     })
 
     s3_settings_suffix = "_STATIC"

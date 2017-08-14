@@ -1,6 +1,12 @@
 django-s3-storage changelog
 ===========================
 
+0.12.0
+------
+
+- Changed default for `AWS_S3_MAX_AGE_SECONDS_STATIC` to 1 hour (see https://github.com/etianen/django-s3-storage/issues/62) (@etianen, @marfire).
+
+
 0.11.3
 ------
 

@@ -405,4 +405,16 @@ class StaticS3Storage(S3Storage):
 
 class ManifestStaticS3Storage(ManifestFilesMixin, StaticS3Storage):
 
-    pass
+    default_s3_settings = StaticS3Storage.default_s3_settings.copy()
+    default_s3_settings.update({
+        "AWS_S3_MAX_AGE_SECONDS_CACHED": 60 * 60 * 24 * 365,  # 1 year.
+    })
+
+    def post_process(self, *args, **kwargs):
+        initial_aws_s3_max_age_seconds = self.settings.AWS_S3_MAX_AGE_SECONDS
+        self.settings.AWS_S3_MAX_AGE_SECONDS = self.settings.AWS_S3_MAX_AGE_SECONDS_CACHED
+        try:
+            for r in super(ManifestStaticS3Storage, self).post_process(*args, **kwargs):
+                yield r
+        finally:
+            self.settings.AWS_S3_MAX_AGE_SECONDS = initial_aws_s3_max_age_seconds

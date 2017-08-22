@@ -26,7 +26,7 @@ AWS_S3_KEY_PREFIX_STATIC = uuid.uuid4().hex
 
 DEFAULT_FILE_STORAGE = "django_s3_storage.storage.S3Storage"
 
-STATICFILES_STORAGE = "django_s3_storage.storage.StaticS3Storage"
+STATICFILES_STORAGE = "django_s3_storage.storage.ManifestStaticS3Storage"
 
 
 # Application definition
@@ -34,6 +34,7 @@ STATICFILES_STORAGE = "django_s3_storage.storage.StaticS3Storage"
 INSTALLED_APPS = (
     "django.contrib.staticfiles",
     "django_s3_storage",
+    "django_s3_storage_test_app",
 )
 
 

@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 from contextlib import contextmanager
 from datetime import timedelta
+import posixpath
 import requests
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
@@ -242,17 +243,6 @@ class TestS3Storage(SimpleTestCase):
     def testStaticSettings(self):
         self.assertEqual(staticfiles_storage.settings.AWS_S3_BUCKET_AUTH, False)
 
-    def testStaticUrl(self):
-        with self.save_file(storage=staticfiles_storage):
-            url = staticfiles_storage.url("foo.txt")
-            # The URL should not contain query string authentication.
-            self.assertFalse(urlsplit(url).query)
-            response = requests.get(url)
-            # The URL should be accessible, but be marked as public.
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.content, b"foo")
-            self.assertEqual(response.headers["cache-control"], "public,max-age=3600")
-
     # Management commands.
 
     def testManagementS3SyncMeta(self):
@@ -266,3 +256,24 @@ class TestS3Storage(SimpleTestCase):
 
     def testManagementS3SyncMetaUnknownStorage(self):
         self.assertRaises(CommandError, lambda: call_command("s3_sync_meta", "foo.bar", stdout=StringIO()))
+
+    def testManagementCollectstatic(self):
+        call_command("collectstatic", interactive=False, stdout=StringIO())
+        url = staticfiles_storage.url("foo.css")
+        try:
+            # The non-hashed name should have the default cache control.
+            meta = staticfiles_storage.meta("foo.css")
+            self.assertEqual(meta["CacheControl"], "public,max-age=3600")
+            # The URL should not contain query string authentication.
+            self.assertFalse(urlsplit(url).query)
+            # The URL should contain an MD5 hash.
+            self.assertRegex(url, "foo\.[0-9a-f]{12}\.css$")
+            # The hashed name should be accessible and have a huge cache control.
+            response = requests.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content, b"* { display: none; }\n")
+            self.assertEqual(response.headers["cache-control"], "public,max-age=31536000")
+        finally:
+            staticfiles_storage.delete("staticfiles.json")
+            staticfiles_storage.delete("foo.css")
+            staticfiles_storage.delete(posixpath.basename(url))

@@ -1,6 +1,14 @@
 django-s3-storage changelog
 ===========================
 
+0.12.1
+------
+
+- Fixed 'header does not match what was computed' error (@etianen).
+- Compatibility with riak-cs (@flo-dhalluin).
+- Fixed documentation typos (@mgalgs).
+
+
 0.12.0
 ------
 

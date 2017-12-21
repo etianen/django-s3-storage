@@ -51,6 +51,24 @@ def _temporary_file():
     return SpooledTemporaryFile(max_size=1024*1024*10)  # 10 MB.
 
 
+def _to_sys_path(name):
+    return name.replace("/", os.sep)
+
+
+def _to_posix_path(name):
+    return name.replace(os.sep, "/")
+
+
+def _wrap_path_impl(func):
+    @wraps(func)
+    def do_wrap_path_impl(name, *args, **kwargs):
+        # The default implementations of most storage methods assume that system-native paths are used. But we deal with
+        # posix paths. We fix this by converting paths to system form, passing them to the default implementation, then
+        # converting them back to posix paths.
+        return _to_posix_path(func(_to_sys_path(name), *args, **kwargs))
+    return do_wrap_path_impl
+
+
 class S3File(File):
 
     """
@@ -166,7 +184,7 @@ class S3Storage(Storage):
     def _get_key_name(self, name):
         if name.startswith("/"):
             name = name[1:]
-        return posixpath.normpath(posixpath.join(self.settings.AWS_S3_KEY_PREFIX, name.replace(os.sep, "/")))
+        return posixpath.normpath(posixpath.join(self.settings.AWS_S3_KEY_PREFIX, _to_posix_path(name)))
 
     def _object_params(self, name):
         params = {
@@ -268,6 +286,10 @@ class S3Storage(Storage):
 
     # Subsiduary storage methods.
 
+    get_valid_name = _wrap_path_impl(Storage.get_valid_name)
+    get_available_name = _wrap_path_impl(Storage.get_available_name)
+    generate_filename = _wrap_path_impl(Storage.generate_filename)
+
     @_wrap_errors
     def meta(self, name):
         """Returns a dictionary of metadata associated with the key."""
@@ -278,6 +300,7 @@ class S3Storage(Storage):
         self.s3_connection.delete_object(**self._object_params(name))
 
     def exists(self, name):
+        name = _to_posix_path(name)
         if name.endswith("/"):
             # This looks like a directory, but on S3 directories are virtual, so we need to see if the key starts
             # with this prefix.

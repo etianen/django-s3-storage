@@ -38,6 +38,9 @@ Use the following settings to authenticate with Amazon AWS.
     # The AWS secret access key to use.
     AWS_SECRET_ACCESS_KEY = ""
 
+    # The optional AWS session token to use.
+    AWS_SESSION_TOKEN = ""
+
 
 File storage settings
 ---------------------

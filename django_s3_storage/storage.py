@@ -96,6 +96,7 @@ class S3Storage(Storage):
         "AWS_REGION": "us-east-1",
         "AWS_ACCESS_KEY_ID": "",
         "AWS_SECRET_ACCESS_KEY": "",
+        "AWS_SESSION_TOKEN": "",
     }
 
     default_s3_settings = {
@@ -150,6 +151,8 @@ class S3Storage(Storage):
             connection_kwargs["aws_access_key_id"] = self.settings.AWS_ACCESS_KEY_ID
         if self.settings.AWS_SECRET_ACCESS_KEY:
             connection_kwargs["aws_secret_access_key"] = self.settings.AWS_SECRET_ACCESS_KEY
+        if self.settings.AWS_SESSION_TOKEN:
+            connection_kwargs["aws_session_token"] = self.settings.AWS_SESSION_TOKEN
         if self.settings.AWS_S3_ENDPOINT_URL:
             connection_kwargs["endpoint_url"] = self.settings.AWS_S3_ENDPOINT_URL
         self.s3_connection = boto3.client("s3", config=Config(

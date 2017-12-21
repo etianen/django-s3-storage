@@ -1,32 +1,39 @@
-dist: trusty
+sudo: false
 language: python
 python:
-- 3.5
-sudo: false
+  - 3.6
+  - 3.5
+  - 2.7
+cache: pip
 env:
   global:
-  # AWS_REGION
-  - secure: "X1EQYf7UP8ynhObVgeA42ZYUIjcUNI6Lgj0MfE0XsOmBc9BkNlf1wVe3MlCCTVh/l4OI80r0YkxGrvMIGnCDbI9SD7PbAnYSKlMpnKTUjniM6ZkGME4t/wxreMakbwMVbJXnqkR3dDUWxJ+RBeksrwKwqvESOlGsc4ew9K6h1Lw="
-  # AWS_ACCESS_KEY_ID
-  - secure: "fYo2oYtTp7LhynDNV7oDkfLu9qowpghYjZZlCs+YyxE7+QQtYjTGTK1yd4L9uQVf0bEVD0KQI4TU6Gv8bQir0DJge+DTxuYp1a2zkDegog8JpQT3QIA7h2IPsC3JgHESY482MDuIkiA7E5NLHtEZBcqcVCWk6a117UIh0kJID8I="
-  # AWS_SECRET_ACCESS_KEY
-  - secure: "N0FrVtz+PdOH4wFKUTNxcAD1pmTyz2et9mroGV/uRPrIo/zXRBrj3zHdjneZGw+5m+5O246qgprAXtsj61YusGXGYmdr9B5bHyAzVD2T+5slyN37dZVfHPMx55PCMBUdG1aMbNTAE8G7AmwyKt5ujIZliDOERxjqzFsHrNCf8Ks="
-  # AWS_S3_BUCKET_NAME
-  - secure: "J9RE3MbU26kmTg5y8WwMD0RnW99SxjJvNY4uFfdbDuPlAn6BV9BQuq1qaPYGksdYdJ8WmXhlRKIhjXjZIgvIEzDQ0msPbJ3dU7uCJFrZRVG3I/jbZR0EfcOiWCaDuQU2TDZw5bo4qanTr4nnZpnBVqj0erjytxUkyqIuRAR3xOg="
-cache:
-  directories:
-  - "$HOME/.cache/pip"
-before_install:
-- rm -rf ~/.pyenv
-- curl -L https://raw.githubusercontent.com/yyuu/pyenv-installer/master/bin/pyenv-installer | bash
-- cat .python-version | xargs -n 1 pyenv install
+    - PYTHONWARNINGS=default,ignore::PendingDeprecationWarning,ignore::ResourceWarning
+    # AWS_REGION
+    - secure: "X1EQYf7UP8ynhObVgeA42ZYUIjcUNI6Lgj0MfE0XsOmBc9BkNlf1wVe3MlCCTVh/l4OI80r0YkxGrvMIGnCDbI9SD7PbAnYSKlMpnKTUjniM6ZkGME4t/wxreMakbwMVbJXnqkR3dDUWxJ+RBeksrwKwqvESOlGsc4ew9K6h1Lw="
+    # AWS_ACCESS_KEY_ID
+    - secure: "fYo2oYtTp7LhynDNV7oDkfLu9qowpghYjZZlCs+YyxE7+QQtYjTGTK1yd4L9uQVf0bEVD0KQI4TU6Gv8bQir0DJge+DTxuYp1a2zkDegog8JpQT3QIA7h2IPsC3JgHESY482MDuIkiA7E5NLHtEZBcqcVCWk6a117UIh0kJID8I="
+    # AWS_SECRET_ACCESS_KEY
+    - secure: "N0FrVtz+PdOH4wFKUTNxcAD1pmTyz2et9mroGV/uRPrIo/zXRBrj3zHdjneZGw+5m+5O246qgprAXtsj61YusGXGYmdr9B5bHyAzVD2T+5slyN37dZVfHPMx55PCMBUdG1aMbNTAE8G7AmwyKt5ujIZliDOERxjqzFsHrNCf8Ks="
+    # AWS_S3_BUCKET_NAME
+    - secure: "J9RE3MbU26kmTg5y8WwMD0RnW99SxjJvNY4uFfdbDuPlAn6BV9BQuq1qaPYGksdYdJ8WmXhlRKIhjXjZIgvIEzDQ0msPbJ3dU7uCJFrZRVG3I/jbZR0EfcOiWCaDuQU2TDZw5bo4qanTr4nnZpnBVqj0erjytxUkyqIuRAR3xOg="
+  matrix:
+    - DJANGO='>=2.0,<2.1'
+    - DJANGO='>=1.11,<1.12'
+    - DJANGO='>=1.10,<1.11'
+    - DJANGO='>=1.9,<1.10'
+    - DJANGO='>=1.8,<1.9'
+matrix:
+  fast_finish: true
+  exclude:
+    - python: 2.7
+      env: DJANGO='>=2.0,<2.1'
 install:
-- pip install 'tox>=2.3.1'
+ - pip install flake8 coverage django$DJANGO requests pytz -e .
 script:
-- 'if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then tox -e flake8; fi'
-- 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then tox; fi'
-notifications:
-  email: false
+  - flake8
+  - coverage run tests/manage.py test tests
+after_success:
+  - coverage report
 deploy:
   provider: pypi
   user: etianen
@@ -34,5 +41,9 @@ deploy:
     secure: T6owRJudXfLP2cntqbsyAMHnOq6rbIAgXfEt1a9smDjyxyXpCH+XAxUWw+5mMZ3mFALyquZGzodtq+cil2j7XkB5gW0fQfo8YtoqjrrIdgvmWLS2zur9c1U+DXIG8vjLLkMiKTg1TXoeb0phELIme4Clxb9KuSKTaFosKWdVy8g=
   on:
     tags: true
-    distributions: sdist bdist_wheel
+    condition: $DJANGO='>=2.0,<2.1'
+    python: 3.6
     repo: etianen/django-s3-storage
+  distributions: sdist bdist_wheel
+notifications:
+  email: false

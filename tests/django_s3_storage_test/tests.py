@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from datetime import timedelta
 import posixpath
 import requests
+import time
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -25,6 +26,7 @@ class TestS3Storage(SimpleTestCase):
     def save_file(self, name="foo.txt", content=b"foo", storage=default_storage):
         name = storage.save(name, ContentFile(content, name))
         try:
+            time.sleep(1)  # Let S3 process the save.
             yield name
         finally:
             storage.delete(name)

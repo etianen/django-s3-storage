@@ -61,11 +61,11 @@ def _to_posix_path(name):
 
 def _wrap_path_impl(func):
     @wraps(func)
-    def do_wrap_path_impl(name, *args, **kwargs):
+    def do_wrap_path_impl(self, name, *args, **kwargs):
         # The default implementations of most storage methods assume that system-native paths are used. But we deal with
         # posix paths. We fix this by converting paths to system form, passing them to the default implementation, then
         # converting them back to posix paths.
-        return _to_posix_path(func(_to_sys_path(name), *args, **kwargs))
+        return _to_posix_path(func(self, _to_sys_path(name), *args, **kwargs))
     return do_wrap_path_impl
 
 
@@ -289,9 +289,19 @@ class S3Storage(Storage):
 
     # Subsiduary storage methods.
 
-    get_valid_name = _wrap_path_impl(Storage.get_valid_name)
-    get_available_name = _wrap_path_impl(Storage.get_available_name)
-    generate_filename = _wrap_path_impl(Storage.generate_filename)
+    @_wrap_path_impl
+    def get_valid_name(self, name):
+        return super(S3Storage, self).get_valid_name(name)
+
+    @_wrap_path_impl
+    def get_available_name(self, name, max_length=None):
+        if self.settings.AWS_S3_FILE_OVERWRITE:
+            return _to_posix_path(name)
+        return super(S3Storage, self).get_available_name(name, max_length=max_length)
+
+    @_wrap_path_impl
+    def generate_filename(self, filename):
+        return super(S3Storage, self).generate_filename(filename)
 
     @_wrap_errors
     def meta(self, name):
@@ -404,11 +414,6 @@ class S3Storage(Storage):
                     **put_params
                 )
                 yield name
-
-    def get_available_name(self, name, max_length=None):
-        if self.settings.AWS_S3_FILE_OVERWRITE:
-            return name
-        return super(S3Storage, self).get_available_name(name, max_length)
 
     def sync_meta(self):
         for path in self.sync_meta_iter():

@@ -44,6 +44,6 @@ deploy:
     condition: $DJANGO='>=2.0,<2.1'
     python: 3.6
     repo: etianen/django-s3-storage
-  distributions: sdist bdist_wheel
+  distributions: sdist
 notifications:
   email: false

@@ -1,6 +1,12 @@
 django-s3-storage changelog
 ===========================
 
+0.12.2
+------
+
+- Fixed issues using ``S3Storage`` in a multithreaded environment.
+
+
 0.12.1
 ------
 
@@ -19,7 +25,7 @@ django-s3-storage changelog
 0.11.3
 ------
 
-- Added `AWS_S3_SIGNATURE_VERSION` setting.
+- Added ``AWS_S3_SIGNATURE_VERSION`` setting.
 - Changed the default signature version for S3 to v4.
   According to the `AWS documentation <http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region>`_ all S3 regions support v4 (but not all support v2).
 - Raising ``S3Error`` instead of ``OSError`` if S3 storage throws an error. ``S3Error`` inherits from both ``OSError`` and ``IOError``.

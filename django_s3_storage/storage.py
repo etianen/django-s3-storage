@@ -8,6 +8,7 @@ from io import TextIOBase
 from contextlib import closing
 from functools import wraps
 from tempfile import SpooledTemporaryFile
+from threading import local
 import boto3
 from botocore.exceptions import ClientError
 from botocore.client import Config
@@ -85,6 +86,33 @@ class S3File(File):
         return super(S3File, self).open(mode)
 
 
+class _Local(local):
+
+    """
+    Thread-local connection manager.
+
+    Boto3 objects are not thread-safe.
+    http://boto3.readthedocs.io/en/latest/guide/resources.html#multithreading-multiprocessing
+    """
+
+    def __init__(self, storage):
+        connection_kwargs = {
+            "region_name": storage.settings.AWS_REGION,
+        }
+        if storage.settings.AWS_ACCESS_KEY_ID:
+            connection_kwargs["aws_access_key_id"] = storage.settings.AWS_ACCESS_KEY_ID
+        if storage.settings.AWS_SECRET_ACCESS_KEY:
+            connection_kwargs["aws_secret_access_key"] = storage.settings.AWS_SECRET_ACCESS_KEY
+        if storage.settings.AWS_SESSION_TOKEN:
+            connection_kwargs["aws_session_token"] = storage.settings.AWS_SESSION_TOKEN
+        if storage.settings.AWS_S3_ENDPOINT_URL:
+            connection_kwargs["endpoint_url"] = storage.settings.AWS_S3_ENDPOINT_URL
+        self.s3_connection = boto3.client("s3", config=Config(
+            s3={"addressing_style": storage.settings.AWS_S3_ADDRESSING_STYLE},
+            signature_version=storage.settings.AWS_S3_SIGNATURE_VERSION,
+        ), **connection_kwargs)
+
+
 @deconstructible
 class S3Storage(Storage):
 
@@ -143,27 +171,15 @@ class S3Storage(Storage):
         # Validate settings.
         if self.settings.AWS_S3_PUBLIC_URL and self.settings.AWS_S3_BUCKET_AUTH:
             raise ImproperlyConfigured("Cannot use AWS_S3_BUCKET_AUTH with AWS_S3_PUBLIC_URL.")
-        # Connect to S3.
-        connection_kwargs = {
-            "region_name": self.settings.AWS_REGION,
-        }
-        if self.settings.AWS_ACCESS_KEY_ID:
-            connection_kwargs["aws_access_key_id"] = self.settings.AWS_ACCESS_KEY_ID
-        if self.settings.AWS_SECRET_ACCESS_KEY:
-            connection_kwargs["aws_secret_access_key"] = self.settings.AWS_SECRET_ACCESS_KEY
-        if self.settings.AWS_SESSION_TOKEN:
-            connection_kwargs["aws_session_token"] = self.settings.AWS_SESSION_TOKEN
-        if self.settings.AWS_S3_ENDPOINT_URL:
-            connection_kwargs["endpoint_url"] = self.settings.AWS_S3_ENDPOINT_URL
-        self.s3_connection = boto3.client("s3", config=Config(
-            s3={"addressing_style": self.settings.AWS_S3_ADDRESSING_STYLE},
-            signature_version=self.settings.AWS_S3_SIGNATURE_VERSION,
-        ), **connection_kwargs)
+        # Create a thread-local connection manager.
+        self._connections = _Local(self)
+
+    @property
+    def s3_connection(self):
+        return self._connections.s3_connection
 
     def _setting_changed_received(self, setting, **kwargs):
         if setting.startswith("AWS_"):
-            # HACK: No supported way to close the HTTP session from boto3... :S
-            self.s3_connection._endpoint.http_session.close()
             self._setup()
 
     def __init__(self, **kwargs):

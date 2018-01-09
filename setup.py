@@ -18,6 +18,7 @@ setup(
     install_requires=[
         "django>=1.7",
         "boto3>=1.4.4,<2",
+        "python-magic>=0.4.12",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",

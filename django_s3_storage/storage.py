@@ -22,6 +22,7 @@ from django.utils.six.moves.urllib.parse import urlsplit, urlunsplit, urljoin
 from django.utils.deconstruct import deconstructible
 from django.utils.encoding import force_bytes, filepath_to_uri, force_text, force_str
 from django.utils.timezone import make_naive, utc
+import magic
 
 
 # Some parts of Django expect an IOError, other parts expect an OSError, so this class inherits both!
@@ -32,6 +33,9 @@ if OSError is IOError:
 else:
     class S3Error(OSError, IOError):
         pass
+
+mime_detector = magic.Magic(mime=True)
+READ_MAGIC_BYTES = 1024  # Most of the file types can be identified from the header - don't read the whole file.
 
 
 def _wrap_errors(func):
@@ -273,9 +277,7 @@ class S3Storage(Storage):
                 temp_file.write(force_bytes(chunk))
             temp_file.seek(0)
             content = temp_file
-        # Calculate the content type.
-        content_type, _ = mimetypes.guess_type(name, strict=False)
-        content_type = content_type or "application/octet-stream"
+        content_type = self._get_content_type(content, name)
         put_params["ContentType"] = content_type
         # Calculate the content encoding.
         if self.settings.AWS_S3_GZIP:
@@ -302,6 +304,15 @@ class S3Storage(Storage):
             temp_file.close()
         # All done!
         return name
+
+    def _get_content_type(self, content, name):
+        if hasattr(content, 'file') and content.file.name is not None:
+            # Can't use content.name directly as it can be set by the user.
+            content_type = mime_detector.from_file(content.file.name)
+        else:
+            content_type = mime_detector.from_buffer(content.read(READ_MAGIC_BYTES))
+
+        return content_type or "application/octet-stream"
 
     # Subsiduary storage methods.
 

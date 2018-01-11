@@ -1,6 +1,12 @@
 django-s3-storage changelog
 ===========================
 
+0.12.3
+------
+
+- Actually fixed issues using ``S3Storage`` in a multithreaded environment.
+
+
 0.12.2
 ------
 

@@ -107,7 +107,8 @@ class _Local(local):
             connection_kwargs["aws_session_token"] = storage.settings.AWS_SESSION_TOKEN
         if storage.settings.AWS_S3_ENDPOINT_URL:
             connection_kwargs["endpoint_url"] = storage.settings.AWS_S3_ENDPOINT_URL
-        self.s3_connection = boto3.client("s3", config=Config(
+        self.session = boto3.session.Session()
+        self.s3_connection = self.session.client("s3", config=Config(
             s3={"addressing_style": storage.settings.AWS_S3_ADDRESSING_STYLE},
             signature_version=storage.settings.AWS_S3_SIGNATURE_VERSION,
         ), **connection_kwargs)

@@ -311,6 +311,7 @@ class S3Storage(Storage):
             content_type = mime_detector.from_file(content.file.name)
         else:
             content_type = mime_detector.from_buffer(content.read(READ_MAGIC_BYTES))
+            content.seek(0)
 
         return content_type or "application/octet-stream"
 

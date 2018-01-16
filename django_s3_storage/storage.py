@@ -306,8 +306,8 @@ class S3Storage(Storage):
         return name
 
     def _get_content_type(self, content, name):
-        if hasattr(content, 'file') and content.file.name is not None:
-            # Can't use content.name directly as it can be set by the user.
+        if hasattr(content, 'file') and hasattr(content.file, 'name') and content.file.name is not None:
+            # Can't use content.name or name directly as it can be set by the user.
             content_type = mime_detector.from_file(content.file.name)
         else:
             content_type = mime_detector.from_buffer(content.read(READ_MAGIC_BYTES))

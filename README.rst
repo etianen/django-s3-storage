@@ -119,7 +119,7 @@ Staticfiles storage settings
 ----------------------------
 
 All of the file storage settings are available for the staticfiles storage, suffixed with ``_STATIC``.
-You must provide at least ``AWS_S3_BUCKET_NAME_STATIC``.
+You must provide at least ``AWS_S3_BUCKET_NAME_STATIC``. The django admin assets are served from the static storage backend. The admin app will be missing css/js/images until you run ``collectstatic``. If you receive the error ``Invalid bucket name`` while running ``collectstatic``, be sure ``AWS_S3_BUCKET_NAME_STATIC`` is set.
 
 The following staticfiles storage settings have different default values to their file storage counterparts.
 

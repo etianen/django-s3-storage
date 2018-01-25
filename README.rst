@@ -118,9 +118,9 @@ existing files, run ``./manage.py s3_sync_meta django.core.files.storage.default
 Staticfiles storage settings
 ----------------------------
 
-All of the file storage settings are available for the staticfiles storage, suffixed with ``_STATIC``.
-You must provide at least ``AWS_S3_BUCKET_NAME_STATIC``. Remember to run `./manage.py collectstatic` after changing your
-staticfiles storage backend.
+All of the file storage settings are available for the staticfiles storage, suffixed with ``_STATIC``. You must provide
+at least ``AWS_S3_BUCKET_NAME_STATIC``. Remember to run ``./manage.py collectstatic`` after changing your staticfiles
+storage backend.
 
 The following staticfiles storage settings have different default values to their file storage counterparts.
 

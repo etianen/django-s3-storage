@@ -141,6 +141,7 @@ class S3Storage(Storage):
         "AWS_S3_CONTENT_LANGUAGE": "",
         "AWS_S3_METADATA": {},
         "AWS_S3_ENCRYPT_KEY": False,
+        "AWS_S3_KMS_ENCRYPTION_KEY_ID": "",
         "AWS_S3_GZIP": True,
         "AWS_S3_SIGNATURE_VERSION": "s3v4",
         "AWS_S3_FILE_OVERWRITE": False
@@ -238,8 +239,13 @@ class S3Storage(Storage):
         if content_langauge:
             params["ContentLanguage"] = content_langauge
         # Set server-side encryption.
-        if self.settings.AWS_S3_ENCRYPT_KEY:
-            params["ServerSideEncryption"] = "AES256"
+        if self.settings.AWS_S3_ENCRYPT_KEY:  # If this if False / None / empty then no encryption
+            if isinstance(self.settings.AWS_S3_ENCRYPT_KEY, str):
+                params["ServerSideEncryption"] = self.settings.AWS_S3_ENCRYPT_KEY
+                if self.settings.AWS_S3_KMS_ENCRYPTION_KEY_ID:
+                    params["SSEKMSKeyId"] = self.settings.AWS_S3_KMS_ENCRYPTION_KEY_ID
+            else:
+                params["ServerSideEncryption"] = "AES256"
         # All done!
         return params
 

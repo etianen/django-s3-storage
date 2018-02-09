@@ -95,9 +95,15 @@ Use the following settings to configure the S3 file storage. You must provide at
     # Important: Changing this setting will not affect existing files.
     AWS_S3_METADATA = {}
 
-    # If True, then files will be stored using server-side encryption.
+    # If True, then files will be stored using AES256 server-side encryption.
+    # If this is a string value (e.g., "aws:kms"), that encryption type will be used.
+    # Otherwise, server-side encryption is not be enabled.
     # Important: Changing this setting will not affect existing files.
     AWS_S3_ENCRYPT_KEY = False
+
+    # The AWS S3 KMS encryption key ID (the `SSEKMSKeyId` parameter) is set from this string if present.
+    # This is only relevant if AWS S3 KMS server-side encryption is enabled (above).
+    AWS_S3_KMS_ENCRYPTION_KEY_ID = ""
 
     # If True, then text files will be stored using gzip content encoding. Files will only be gzipped if their
     # compressed size is smaller than their uncompressed size.

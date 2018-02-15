@@ -1,6 +1,12 @@
 django-s3-storage changelog
 ===========================
 
+0.12.4
+------
+
+- Added support for AWS KMS encryption, using the ``AWS_S3_ENCRYPT_KEY`` and ``AWS_S3_KMS_ENCRYPTION_KEY_ID`` settings.
+
+
 0.12.3
 ------
 

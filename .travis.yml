@@ -41,7 +41,7 @@ deploy:
     secure: T6owRJudXfLP2cntqbsyAMHnOq6rbIAgXfEt1a9smDjyxyXpCH+XAxUWw+5mMZ3mFALyquZGzodtq+cil2j7XkB5gW0fQfo8YtoqjrrIdgvmWLS2zur9c1U+DXIG8vjLLkMiKTg1TXoeb0phELIme4Clxb9KuSKTaFosKWdVy8g=
   on:
     tags: true
-    condition: $DJANGO='>=2.0,<2.1'
+    condition: $DJANGO = '>=2.0,<2.1'
     python: 3.6
     repo: etianen/django-s3-storage
   distributions: sdist

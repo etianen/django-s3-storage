@@ -160,6 +160,24 @@ To make media files public, and enable aggressive caching, make the following ch
 The default settings for staticfiles storage are already optimizing for aggressive caching.
 
 
+Content type of the uploaded files
+----------------------------------
+
+When the file is uploaded, AWS sets content type that will be then used in a header when client later downloads
+the file.
+
+The content type can be set manually in cases where the detection doesn't work well. Set the ``content_type`` property
+of the content being saved.
+
+.. code:: python
+
+    content = File(some_file)
+    content.content_type = 'application/pdf'
+    my_model.file.save('invoice.pdf', content)
+
+If the content type isn't set, we fall back to guessing it from the name and then from the content itself.
+
+
 Management commands
 -------------------
 

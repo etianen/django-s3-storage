@@ -308,12 +308,18 @@ class S3Storage(Storage):
     @classmethod
     def _get_content_type(cls, content, name):
         try:
-            return content.content_type
-        except AttributeError:
-            content_type, _encoding = mimetypes.guess_type(name, strict=False)
-            if content_type not in (None, 'application/octet-stream'):
+            content_type = content.storage_content_type
+            if content_type:
                 return content_type
-            return cls._get_content_type_from_content(content)
+        except AttributeError:
+            pass
+
+        content_type, _encoding = mimetypes.guess_type(name, strict=False)
+
+        if content_type not in (None, 'application/octet-stream'):
+            return content_type
+
+        return cls._get_content_type_from_content(content)
 
     @classmethod
     def _get_content_type_from_content(cls, content):

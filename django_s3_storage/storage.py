@@ -323,18 +323,13 @@ class S3Storage(Storage):
 
     @classmethod
     def _get_content_type_from_content(cls, content):
-        content.seek(0)
-        try:
+        if (hasattr(content, 'file') and hasattr(content.file, 'name')  # This isn't ContentFile...
+                and isinstance(content.file.name, str)  # and .name isn't a numeric file descriptor (can be in case of SpooledTemporaryFile)...
+                and os.path.exists(content.file.name)):  # and we'll actually find it on disk.
+            # Can't use content.name or name directly as it can be set by the user.
             content_type = mime_detector.from_file(content.file.name)
-        except (
-                FileNotFoundError,  # File isn't on disk
-                OSError,  # Numeric descriptor, like in SpooledTemporaryFile
-                TypeError,  # content.file.name is None (SpooledTemporaryFile)
-                AttributeError,
-        ):
-            # We can Have ContentFile, File(SpooledTemporaryFile) or even something else.
+        else:
             content_type = mime_detector.from_buffer(content.read(READ_MAGIC_BYTES))
-        finally:
             content.seek(0)
 
         return content_type or "application/octet-stream"

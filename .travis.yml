@@ -22,6 +22,9 @@ matrix:
   fast_finish: true
   include:
     - { python: "2.7", env: DJANGO="==1.11.*" }
+
+    - { python: "3.7", env: DJANGO="==2.0.*", dist: xenial, sudo: true }
+    - { python: "3.7", env: DJANGO="==2.1.*", dist: xenial, sudo: true }
 install:
  - pip install flake8 coverage django$DJANGO requests pytz -e .
 script:

@@ -3,7 +3,6 @@ language: python
 python:
   - 3.6
   - 3.5
-  - 2.7
 cache: pip
 env:
   global:
@@ -18,12 +17,11 @@ env:
     - secure: "J9RE3MbU26kmTg5y8WwMD0RnW99SxjJvNY4uFfdbDuPlAn6BV9BQuq1qaPYGksdYdJ8WmXhlRKIhjXjZIgvIEzDQ0msPbJ3dU7uCJFrZRVG3I/jbZR0EfcOiWCaDuQU2TDZw5bo4qanTr4nnZpnBVqj0erjytxUkyqIuRAR3xOg="
   matrix:
     - DJANGO='>=2.0,<2.1'
-    - DJANGO='>=1.11,<1.12'
+    - DJANGO='>=2.1,<2.2'
 matrix:
   fast_finish: true
-  exclude:
-    - python: 2.7
-      env: DJANGO='>=2.0,<2.1'
+  include:
+    - { python: "2.7", env: DJANGO="==1.11.*" }
 install:
  - pip install flake8 coverage django$DJANGO requests pytz -e .
 script:

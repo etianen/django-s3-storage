@@ -16,7 +16,7 @@ setup(
     url="https://github.com/etianen/django-s3-storage",
     packages=find_packages(),
     install_requires=[
-        "django>=1.7",
+        "django>=1.11",
         "boto3>=1.4.4,<2",
     ],
     classifiers=[
@@ -30,6 +30,7 @@ setup(
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "Framework :: Django",
     ],
 )

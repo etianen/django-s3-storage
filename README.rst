@@ -115,7 +115,7 @@ Use the following settings to configure the S3 file storage. You must provide at
 
     # If True, then files with the same name will overwrite each other. By default it's set to False to have
     # extra characters appended.
-    AWS_S3_FILE_OVERWRITE =  False
+    AWS_S3_FILE_OVERWRITE = False
 
 **Important:** Several of these settings (noted above) will not affect existing files. To sync the new settings to
 existing files, run ``./manage.py s3_sync_meta django.core.files.storage.default_storage``.

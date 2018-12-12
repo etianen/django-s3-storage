@@ -120,6 +120,22 @@ Use the following settings to configure the S3 file storage. You must provide at
 **Important:** Several of these settings (noted above) will not affect existing files. To sync the new settings to
 existing files, run ``./manage.py s3_sync_meta django.core.files.storage.default_storage``.
 
+These settings can be provided in field storage definition like this:
+
+.. code:: python
+
+    from django.db import models
+
+    from django_s3_storage.storage import S3Storage
+
+    storage = S3Storage(aws_s3_bucket_name='test_bucket')
+
+
+    class Car(models.Model):
+        name = models.CharField(max_length=255)
+        photo = models.ImageField(storage=storage)
+
+**Note:** settings key in storage definition should be `lowercase`.
 
 Staticfiles storage settings
 ----------------------------

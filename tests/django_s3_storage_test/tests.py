@@ -46,6 +46,7 @@ class TestS3Storage(SimpleTestCase):
     def testSettingsOverwrittenByKwargs(self):
         self.assertEqual(S3Storage().settings.AWS_S3_CONTENT_LANGUAGE, "")
         self.assertEqual(S3Storage(aws_s3_content_language="foo").settings.AWS_S3_CONTENT_LANGUAGE, "foo")
+        self.assertEqual(S3Storage(AWS_S3_CONTENT_LANGUAGE="foo").settings.AWS_S3_CONTENT_LANGUAGE, "foo")
 
     def testSettingsCannotUsePublicUrlAndBucketAuth(self):
         self.assertRaises(ImproperlyConfigured, lambda: S3Storage(

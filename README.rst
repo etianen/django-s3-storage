@@ -135,8 +135,6 @@ These settings can be provided in field storage definition like this:
         name = models.CharField(max_length=255)
         photo = models.ImageField(storage=storage)
 
-**Note:** settings key in storage definition should be `lowercase`.
-
 Staticfiles storage settings
 ----------------------------
 

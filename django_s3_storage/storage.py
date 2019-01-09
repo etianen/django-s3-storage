@@ -157,7 +157,7 @@ class S3Storage(Storage):
                 self.settings,
                 setting_key,
                 self._kwargs.get(
-                    setting_key.lower(),
+                    setting_key,
                     getattr(settings, setting_key, setting_default_value),
                 ),
             )
@@ -166,7 +166,7 @@ class S3Storage(Storage):
                 self.settings,
                 setting_key,
                 self._kwargs.get(
-                    setting_key.lower(),
+                    setting_key,
                     getattr(settings, setting_key + self.s3_settings_suffix, setting_default_value),
                 ),
             )
@@ -186,12 +186,14 @@ class S3Storage(Storage):
 
     def __init__(self, **kwargs):
         # Check for unknown kwargs.
-        for kwarg_key in kwargs.keys():
+        for kwarg_key, kwarg_value in kwargs.items():
+            kwarg_key = kwarg_key.upper()
             if (
-                kwarg_key.upper() not in self.default_auth_settings and
-                kwarg_key.upper() not in self.default_s3_settings
+                kwarg_key not in self.default_auth_settings and
+                kwarg_key not in self.default_s3_settings
             ):
                 raise ImproperlyConfigured("Unknown S3Storage parameter: {}".format(kwarg_key))
+            kwargs[kwarg_key] = kwarg_value
         # Set up the storage.
         self._kwargs = kwargs
         self._setup()

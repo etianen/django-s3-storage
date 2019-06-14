@@ -71,6 +71,10 @@ def _wrap_path_impl(func):
     return do_wrap_path_impl
 
 
+def unpickle_helper(cls, kwargs):
+    return cls(**kwargs)
+
+
 Settings = type(force_str("Settings"), (), {})
 
 
@@ -203,6 +207,9 @@ class S3Storage(Storage):
         setting_changed.connect(self._setting_changed_received)
         # All done!
         super(S3Storage, self).__init__()
+
+    def __reduce__(self):
+        return unpickle_helper, (self.__class__, self._kwargs)
 
     # Helpers.
 

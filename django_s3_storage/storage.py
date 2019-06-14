@@ -71,6 +71,9 @@ def _wrap_path_impl(func):
     return do_wrap_path_impl
 
 
+Settings = type(force_str("Settings"), (), {})
+
+
 class S3File(File):
 
     """
@@ -151,7 +154,7 @@ class S3Storage(Storage):
     s3_settings_suffix = ""
 
     def _setup(self):
-        self.settings = type(force_str("Settings"), (), {})()
+        self.settings = Settings()
         # Configure own settings.
         for setting_key, setting_default_value in self.default_auth_settings.items():
             setattr(

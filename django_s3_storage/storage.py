@@ -1,28 +1,29 @@
 from __future__ import unicode_literals
+
 import gzip
 import mimetypes
 import os
 import posixpath
 import shutil
-from io import TextIOBase
 from contextlib import closing
 from functools import wraps
+from io import TextIOBase
 from tempfile import SpooledTemporaryFile
 from threading import local
-import boto3
-from botocore.exceptions import ClientError
-from botocore.client import Config
-from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
-from django.core.files.storage import Storage
-from django.core.files.base import File
-from django.core.signals import setting_changed
-from django.contrib.staticfiles.storage import ManifestFilesMixin
-from django.utils.six.moves.urllib.parse import urlsplit, urlunsplit, urljoin
-from django.utils.deconstruct import deconstructible
-from django.utils.encoding import force_bytes, filepath_to_uri, force_text, force_str
-from django.utils.timezone import make_naive, utc
 
+import boto3
+from botocore.client import Config
+from botocore.exceptions import ClientError
+from django.conf import settings
+from django.contrib.staticfiles.storage import ManifestFilesMixin
+from django.core.exceptions import ImproperlyConfigured
+from django.core.files.base import File
+from django.core.files.storage import Storage
+from django.core.signals import setting_changed
+from django.utils.deconstruct import deconstructible
+from django.utils.encoding import filepath_to_uri, force_bytes, force_str, force_text
+from django.utils.six.moves.urllib.parse import urljoin, urlsplit, urlunsplit
+from django.utils.timezone import make_naive, utc
 
 # Some parts of Django expect an IOError, other parts expect an OSError, so this class inherits both!
 # In Python 3, the distinction is irrelevant, but in Python 2 they are distinct classes.

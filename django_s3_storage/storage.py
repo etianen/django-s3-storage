@@ -1,28 +1,29 @@
 from __future__ import unicode_literals
+
 import gzip
 import mimetypes
 import os
 import posixpath
 import shutil
-from io import TextIOBase
 from contextlib import closing
 from functools import wraps
+from io import TextIOBase
 from tempfile import SpooledTemporaryFile
 from threading import local
-import boto3
-from botocore.exceptions import ClientError
-from botocore.client import Config
-from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
-from django.core.files.storage import Storage
-from django.core.files.base import File
-from django.core.signals import setting_changed
-from django.contrib.staticfiles.storage import ManifestFilesMixin
-from django.utils.six.moves.urllib.parse import urlsplit, urlunsplit, urljoin
-from django.utils.deconstruct import deconstructible
-from django.utils.encoding import force_bytes, filepath_to_uri, force_text, force_str
-from django.utils.timezone import make_naive, utc
 
+import boto3
+from botocore.client import Config
+from botocore.exceptions import ClientError
+from django.conf import settings
+from django.contrib.staticfiles.storage import ManifestFilesMixin
+from django.core.exceptions import ImproperlyConfigured
+from django.core.files.base import File
+from django.core.files.storage import Storage
+from django.core.signals import setting_changed
+from django.utils.deconstruct import deconstructible
+from django.utils.encoding import filepath_to_uri, force_bytes, force_str, force_text
+from django.utils.six.moves.urllib.parse import urljoin, urlsplit, urlunsplit
+from django.utils.timezone import make_naive, utc
 
 # Some parts of Django expect an IOError, other parts expect an OSError, so this class inherits both!
 # In Python 3, the distinction is irrelevant, but in Python 2 they are distinct classes.
@@ -68,6 +69,13 @@ def _wrap_path_impl(func):
         # converting them back to posix paths.
         return _to_posix_path(func(self, _to_sys_path(name), *args, **kwargs))
     return do_wrap_path_impl
+
+
+def unpickle_helper(cls, kwargs):
+    return cls(**kwargs)
+
+
+Settings = type(force_str("Settings"), (), {})
 
 
 class S3File(File):
@@ -150,7 +158,7 @@ class S3Storage(Storage):
     s3_settings_suffix = ""
 
     def _setup(self):
-        self.settings = type(force_str("Settings"), (), {})()
+        self.settings = Settings()
         # Configure own settings.
         for setting_key, setting_default_value in self.default_auth_settings.items():
             setattr(
@@ -199,6 +207,9 @@ class S3Storage(Storage):
         setting_changed.connect(self._setting_changed_received)
         # All done!
         super(S3Storage, self).__init__()
+
+    def __reduce__(self):
+        return unpickle_helper, (self.__class__, self._kwargs)
 
     # Helpers.
 

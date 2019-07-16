@@ -389,21 +389,22 @@ class S3Storage(Storage):
     def size(self, name):
         return self.meta(name)["ContentLength"]
 
-    def _presigned_url_params(self, name):
-        params = self._object_params(name)
+    def _presigned_url_params(self, name, **kwargs):
+        params = self._object_params(name).copy()
         content_disposition = _callable_setting(self.settings.AWS_S3_CONTENT_DISPOSITION, name)
         if content_disposition:
-            params.update({ "ResponseContentDisposition", content_disposition })
+            params.update({ "ResponseContentDisposition": content_disposition })
+        params.update(kwargs)
         return params
 
-    def url(self, name):
+    def url(self, name, extra_params={}):
         # Use a public URL, if specified.
         if self.settings.AWS_S3_PUBLIC_URL:
             return urljoin(self.settings.AWS_S3_PUBLIC_URL, filepath_to_uri(name))
         # Otherwise, generate the URL.
         url = self.s3_connection.generate_presigned_url(
             ClientMethod="get_object",
-            Params=self._presigned_url_params(name),
+            Params=self._presigned_url_params(name, **extra_params),
             ExpiresIn=self.settings.AWS_S3_MAX_AGE_SECONDS,
         )
         # Strip off the query params if we're not interested in bucket auth.

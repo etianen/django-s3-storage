@@ -307,10 +307,12 @@ class S3Storage(Storage):
                 with closing(gzip.GzipFile(name, "wb", 9, temp_file)) as gzip_file:
                     shutil.copyfileobj(content, gzip_file)
                 # Only use the compressed version if the zipped version is actually smaller!
-                if temp_file.tell() < content.tell():
+                orig_size = content.tell()
+                if temp_file.tell() < orig_size:
                     temp_file.seek(0)
                     content = temp_file
                     put_params["ContentEncoding"] = "gzip"
+                    put_params["Metadata"]["uncompressed_size"] = "{:d}".format(orig_size)
                 else:
                     content.seek(0)
         # Save the file.
@@ -387,7 +389,12 @@ class S3Storage(Storage):
         return dirs, files
 
     def size(self, name):
-        return self.meta(name)["ContentLength"]
+        meta = self.meta(name)
+        try:
+            if meta["ContentEncoding"] == "gzip":
+                return int(meta["Metadata"]["uncompressed_size"])
+        except KeyError:
+            return meta["ContentLength"]
 
     def url(self, name):
         # Use a public URL, if specified.

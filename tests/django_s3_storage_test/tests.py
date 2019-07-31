@@ -269,7 +269,7 @@ class TestS3Storage(SimpleTestCase):
             # The URL should not contain query string authentication.
             self.assertFalse(urlsplit(url).query)
             # The URL should contain an MD5 hash.
-            assertRegex(self, url, "foo\.[0-9a-f]{12}\.css$")
+            assertRegex(self, url, r"foo\.[0-9a-f]{12}\.css$")
             # The hashed name should be accessible and have a huge cache control.
             response = requests.get(url)
             self.assertEqual(response.status_code, 200)

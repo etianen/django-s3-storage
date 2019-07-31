@@ -78,6 +78,9 @@ def unpickle_helper(cls, kwargs):
 Settings = type(force_str("Settings"), (), {})
 
 
+_UNCOMPRESSED_SIZE_META_KEY = "uncompressed_size"
+
+
 class S3File(File):
 
     """
@@ -312,7 +315,7 @@ class S3Storage(Storage):
                     temp_file.seek(0)
                     content = temp_file
                     put_params["ContentEncoding"] = "gzip"
-                    put_params["Metadata"]["uncompressed_size"] = "{:d}".format(orig_size)
+                    put_params["Metadata"][_UNCOMPRESSED_SIZE_META_KEY] = "{:d}".format(orig_size)
                 else:
                     content.seek(0)
         # Save the file.
@@ -444,6 +447,12 @@ class S3Storage(Storage):
                 content_encoding = obj.get("ContentEncoding")
                 if content_encoding:
                     put_params["ContentEncoding"] = content_encoding
+                    if content_encoding == "gzip":
+                        try:
+                            put_params["Metadata"][_UNCOMPRESSED_SIZE_META_KEY] = \
+                                obj["Metadata"][_UNCOMPRESSED_SIZE_META_KEY]
+                        except KeyError:
+                            pass
                 # Update the metadata.
                 self.s3_connection.copy_object(
                     ContentType=obj["ContentType"],

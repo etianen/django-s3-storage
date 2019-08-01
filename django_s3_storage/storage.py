@@ -399,6 +399,9 @@ class S3Storage(Storage):
     def url(self, name, extra_params=None):
         # Use a public URL, if specified.
         if self.settings.AWS_S3_PUBLIC_URL:
+            if extra_params:
+                raise ValueError("Use of extra_params to generate custom URLs is not allowed "
+                        "with AWS_S3_PUBLIC_URL")
             return urljoin(self.settings.AWS_S3_PUBLIC_URL, filepath_to_uri(name))
         # Otherwise, generate the URL.
         params = extra_params.copy() if extra_params else {}

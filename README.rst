@@ -183,6 +183,30 @@ To make media files public, and enable aggressive caching, make the following ch
 The default settings for staticfiles storage are already optimizing for aggressive caching.
 
 
+Custom URLs
+-----------
+
+Sometimes the default settings aren't flexible enough and custom handling of object is needed. For
+example, the ``Content-Disposition`` might be set to force download of a file instead of opening
+it:
+
+.. code:: python
+
+    url = storage.url("foo/bar.pdf", extra_params={"ResponseContentDisposition": "attachment"})
+
+Another example is a link to a specific version of the file (within a bucket that has versioning
+enabled):
+
+.. code:: python
+
+    url = storage.url("foo/bar.pdf", extra_params={"VersionId": "FRy3fTduRtqHsRAoNp0REzPJj_WunDfl"})
+
+The ``extra_params`` dict accepts the same parameters as `get_object() <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.get_object>`_.
+
+Please note, however, that **custom URLs will not work with AWS_S3_PUBLIC_URL** where the
+URL doesn't accept extra parameters, and it will raise ``ValueError``.
+
+
 Management commands
 -------------------
 

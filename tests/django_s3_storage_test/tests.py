@@ -92,6 +92,24 @@ class TestS3Storage(SimpleTestCase):
             self.assertEqual(default_storage.open("foo.txt").read(), b"foo" * 1000)
             self.assertEqual(requests.get(default_storage.url("foo.txt")).content, b"foo" * 1000)
 
+    def testGzippedSize(self):
+        content = "foo" * 4096
+        with self.settings(AWS_S3_GZIP=False):
+            name = "foo/bar.txt"
+            with self.save_file(name=name, content=content):
+                meta = default_storage.meta(name)
+                self.assertNotEqual(meta.get("ContentEncoding", ""), "gzip")
+                self.assertNotIn("uncompressed_size", meta["Metadata"])
+                self.assertEqual(default_storage.size(name), len(content))
+        with self.settings(AWS_S3_GZIP=True):
+            name = "foo/bar.txt.gz"
+            with self.save_file(name=name, content=content):
+                meta = default_storage.meta(name)
+                self.assertEqual(meta["ContentEncoding"], "gzip")
+                self.assertIn("uncompressed_size", meta["Metadata"])
+                self.assertEqual(meta["Metadata"], {"uncompressed_size": str(len(content))})
+                self.assertEqual(default_storage.size(name), len(content))
+
     def testUrl(self):
         with self.save_file():
             url = default_storage.url("foo.txt")
@@ -177,48 +195,95 @@ class TestS3Storage(SimpleTestCase):
             self.assertEqual(default_storage.listdir("bar/"), ([], ["bat.txt"]))
 
     def testSyncMeta(self):
-        with self.save_file(name="foo/bar.txt", content=b"foo" * 1000):
-            meta = default_storage.meta("foo/bar.txt")
-            self.assertEqual(meta["CacheControl"], "private,max-age=3600")
-            self.assertEqual(meta["ContentType"], "text/plain")
-            self.assertEqual(meta["ContentEncoding"], "gzip")
-            self.assertEqual(meta.get("ContentDisposition"), None)
-            self.assertEqual(meta.get("ContentLanguage"), None)
-            self.assertEqual(meta["Metadata"], {})
-            self.assertEqual(meta.get("StorageClass"), None)
-            self.assertEqual(meta.get("ServerSideEncryption"), None)
-            # Store new metadata.
-            with self.settings(
-                AWS_S3_BUCKET_AUTH=False,
-                AWS_S3_MAX_AGE_SECONDS=9999,
-                AWS_S3_CONTENT_DISPOSITION=lambda name: "attachment; filename={}".format(name),
-                AWS_S3_CONTENT_LANGUAGE="eo",
-                AWS_S3_METADATA={
+        content = b"foo" * 1000
+        with self.settings(AWS_S3_GZIP=False):
+            with self.save_file(name="foo/bar.txt", content=content):
+                meta = default_storage.meta("foo/bar.txt")
+                self.assertEqual(meta["CacheControl"], "private,max-age=3600")
+                self.assertEqual(meta["ContentType"], "text/plain")
+                self.assertEqual(meta.get("ContentDisposition"), None)
+                self.assertEqual(meta.get("ContentLanguage"), None)
+                self.assertNotIn("uncompressed_size", meta["Metadata"])
+                self.assertEqual(meta.get("StorageClass"), None)
+                self.assertEqual(meta.get("ServerSideEncryption"), None)
+                # Store new metadata.
+                with self.settings(
+                    AWS_S3_BUCKET_AUTH=False,
+                    AWS_S3_MAX_AGE_SECONDS=9999,
+                    AWS_S3_CONTENT_DISPOSITION=lambda name: "attachment; filename={}".format(name),
+                    AWS_S3_CONTENT_LANGUAGE="eo",
+                    AWS_S3_METADATA={
+                        "foo": "bar",
+                        "baz": lambda name: name,
+                    },
+                    AWS_S3_REDUCED_REDUNDANCY=True,
+                    AWS_S3_ENCRYPT_KEY=True,
+                ):
+                    default_storage.sync_meta()
+                # Check metadata changed.
+                meta = default_storage.meta("foo/bar.txt")
+                self.assertEqual(meta["CacheControl"], "public,max-age=9999")
+                self.assertEqual(meta["ContentType"], "text/plain")
+                self.assertEqual(meta.get("ContentDisposition"), "attachment; filename=foo/bar.txt")
+                self.assertEqual(meta.get("ContentLanguage"), "eo")
+                self.assertEqual(meta.get("Metadata"), {
                     "foo": "bar",
-                    "baz": lambda name: name,
-                },
-                AWS_S3_REDUCED_REDUNDANCY=True,
-                AWS_S3_ENCRYPT_KEY=True,
-            ):
-                default_storage.sync_meta()
-            # Check metadata changed.
-            meta = default_storage.meta("foo/bar.txt")
-            self.assertEqual(meta["CacheControl"], "public,max-age=9999")
-            self.assertEqual(meta["ContentType"], "text/plain")
-            self.assertEqual(meta["ContentEncoding"], "gzip")
-            self.assertEqual(meta.get("ContentDisposition"), "attachment; filename=foo/bar.txt")
-            self.assertEqual(meta.get("ContentLanguage"), "eo")
-            self.assertEqual(meta.get("Metadata"), {
-                "foo": "bar",
-                "baz": "foo/bar.txt",
-            })
-            self.assertEqual(meta["StorageClass"], "REDUCED_REDUNDANCY")
-            self.assertEqual(meta["ServerSideEncryption"], "AES256")
-            # Check ACL changed by removing the query string.
-            url_unauthenticated = urlunsplit(urlsplit(default_storage.url("foo/bar.txt"))[:3] + ("", "",))
-            response = requests.get(url_unauthenticated)
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.content, b"foo" * 1000)
+                    "baz": "foo/bar.txt",
+                })
+                self.assertEqual(meta["StorageClass"], "REDUCED_REDUNDANCY")
+                self.assertEqual(meta["ServerSideEncryption"], "AES256")
+                # Check ACL changed by removing the query string.
+                url_unauthenticated = urlunsplit(urlsplit(default_storage.url("foo/bar.txt"))[:3] + ("", "",))
+                response = requests.get(url_unauthenticated)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.content, b"foo" * 1000)
+
+    def testSyncMetaWithGzip(self):
+        content = b"foo" * 1000
+        with self.settings(AWS_S3_GZIP=True):
+            with self.save_file(name="foo/bar.txt", content=content):
+                meta = default_storage.meta("foo/bar.txt")
+                self.assertEqual(meta["CacheControl"], "private,max-age=3600")
+                self.assertEqual(meta["ContentType"], "text/plain")
+                self.assertEqual(meta["ContentEncoding"], "gzip")
+                self.assertEqual(meta.get("ContentDisposition"), None)
+                self.assertEqual(meta.get("ContentLanguage"), None)
+                self.assertEqual(meta["Metadata"], {"uncompressed_size": str(len(content))})
+                self.assertEqual(meta.get("StorageClass"), None)
+                self.assertEqual(meta.get("ServerSideEncryption"), None)
+                # Store new metadata.
+                with self.settings(
+                    AWS_S3_BUCKET_AUTH=False,
+                    AWS_S3_MAX_AGE_SECONDS=9999,
+                    AWS_S3_CONTENT_DISPOSITION=lambda name: "attachment; filename={}".format(name),
+                    AWS_S3_CONTENT_LANGUAGE="eo",
+                    AWS_S3_METADATA={
+                        "foo": "bar",
+                        "baz": lambda name: name,
+                    },
+                    AWS_S3_REDUCED_REDUNDANCY=True,
+                    AWS_S3_ENCRYPT_KEY=True,
+                ):
+                    default_storage.sync_meta()
+                # Check metadata changed.
+                meta = default_storage.meta("foo/bar.txt")
+                self.assertEqual(meta["CacheControl"], "public,max-age=9999")
+                self.assertEqual(meta["ContentType"], "text/plain")
+                self.assertEqual(meta["ContentEncoding"], "gzip")
+                self.assertEqual(meta.get("ContentDisposition"), "attachment; filename=foo/bar.txt")
+                self.assertEqual(meta.get("ContentLanguage"), "eo")
+                self.assertEqual(meta.get("Metadata"), {
+                    "foo": "bar",
+                    "baz": "foo/bar.txt",
+                    "uncompressed_size": str(len(content)),
+                })
+                self.assertEqual(meta["StorageClass"], "REDUCED_REDUNDANCY")
+                self.assertEqual(meta["ServerSideEncryption"], "AES256")
+                # Check ACL changed by removing the query string.
+                url_unauthenticated = urlunsplit(urlsplit(default_storage.url("foo/bar.txt"))[:3] + ("", "",))
+                response = requests.get(url_unauthenticated)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.content, b"foo" * 1000)
 
     def testPublicUrl(self):
         with self.settings(AWS_S3_PUBLIC_URL="/foo/", AWS_S3_BUCKET_AUTH=False):

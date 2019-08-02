@@ -125,6 +125,48 @@ class TestS3Storage(SimpleTestCase):
             response_unauthenticated = requests.get(url_unauthenticated)
             self.assertEqual(response_unauthenticated.status_code, 403)
 
+    def testCustomUrlContentDisposition(self):
+        name = "foo/bar.txt"
+        with self.save_file(name=name, content="foo" * 4096):
+            url = default_storage.url(name, extra_params={"ResponseContentDisposition": "attachment"})
+            self.assertIn("response-content-disposition=attachment", url)
+            rsp = requests.get(url)
+            self.assertEqual(rsp.status_code, 200)
+            self.assertIn("Content-Disposition", rsp.headers)
+            self.assertEqual(rsp.headers["Content-Disposition"], "attachment")
+
+    def testCustomUrlWhenPublicURL(self):
+        with self.settings(AWS_S3_PUBLIC_URL="/foo/", AWS_S3_BUCKET_AUTH=False):
+            name = "bar.txt"
+            with self.save_file(name=name, content="foo" * 4096):
+                self.assertRaises(
+                    ValueError,
+                    default_storage.url,
+                    name,
+                    extra_params={"ResponseContentDisposition": "attachment"})
+
+    def testCustomUrlVersionId(self):
+        with self.settings(AWS_S3_FILE_OVERWRITE=True):
+            name = "foo/bar.txt"
+            content1 = "foo" * 512
+            with self.save_file(name=name, content=content1):
+                meta = default_storage.meta(name)
+                self.assertIn("VersionId", meta,
+                    u"VersionId not found in object meta. Make sure the bucket supports versioning.")
+                version1_id = meta["VersionId"]
+                content2 = "bar" * 1024
+                with self.save_file(name=name, content=content2):
+                    meta = default_storage.meta(name)
+                    version2_id = meta["VersionId"]
+                    url1 = default_storage.url(name, extra_params={"VersionId": version1_id})
+                    rsp = requests.get(url1)
+                    self.assertEqual(rsp.status_code, 200)
+                    self.assertEqual(rsp.content, content1)
+                    url2 = default_storage.url(name, extra_params={"VersionId": version2_id})
+                    rsp = requests.get(url2)
+                    self.assertEqual(rsp.status_code, 200)
+                    self.assertEqual(rsp.content, content2)
+
     def testExists(self):
         self.assertFalse(default_storage.exists("foo.txt"))
         with self.save_file():

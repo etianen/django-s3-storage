@@ -145,28 +145,6 @@ class TestS3Storage(SimpleTestCase):
                     name,
                     extra_params={"ResponseContentDisposition": "attachment"})
 
-    def testCustomUrlVersionId(self):
-        with self.settings(AWS_S3_FILE_OVERWRITE=True):
-            name = "foo/bar.txt"
-            content1 = "foo" * 512
-            with self.save_file(name=name, content=content1):
-                meta = default_storage.meta(name)
-                self.assertIn("VersionId", meta,
-                    u"VersionId not found in object meta. Make sure the bucket supports versioning.")
-                version1_id = meta["VersionId"]
-                content2 = "bar" * 1024
-                with self.save_file(name=name, content=content2):
-                    meta = default_storage.meta(name)
-                    version2_id = meta["VersionId"]
-                    url1 = default_storage.url(name, extra_params={"VersionId": version1_id})
-                    rsp = requests.get(url1)
-                    self.assertEqual(rsp.status_code, 200)
-                    self.assertEqual(rsp.content, content1)
-                    url2 = default_storage.url(name, extra_params={"VersionId": version2_id})
-                    rsp = requests.get(url2)
-                    self.assertEqual(rsp.status_code, 200)
-                    self.assertEqual(rsp.content, content2)
-
     def testExists(self):
         self.assertFalse(default_storage.exists("foo.txt"))
         with self.save_file():

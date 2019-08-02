@@ -125,6 +125,26 @@ class TestS3Storage(SimpleTestCase):
             response_unauthenticated = requests.get(url_unauthenticated)
             self.assertEqual(response_unauthenticated.status_code, 403)
 
+    def testCustomUrlContentDisposition(self):
+        name = "foo/bar.txt"
+        with self.save_file(name=name, content="foo" * 4096):
+            url = default_storage.url(name, extra_params={"ResponseContentDisposition": "attachment"})
+            self.assertIn("response-content-disposition=attachment", url)
+            rsp = requests.get(url)
+            self.assertEqual(rsp.status_code, 200)
+            self.assertIn("Content-Disposition", rsp.headers)
+            self.assertEqual(rsp.headers["Content-Disposition"], "attachment")
+
+    def testCustomUrlWhenPublicURL(self):
+        with self.settings(AWS_S3_PUBLIC_URL="/foo/", AWS_S3_BUCKET_AUTH=False):
+            name = "bar.txt"
+            with self.save_file(name=name, content="foo" * 4096):
+                self.assertRaises(
+                    ValueError,
+                    default_storage.url,
+                    name,
+                    extra_params={"ResponseContentDisposition": "attachment"})
+
     def testExists(self):
         self.assertFalse(default_storage.exists("foo.txt"))
         with self.save_file():

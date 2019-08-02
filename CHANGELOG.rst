@@ -1,6 +1,15 @@
 django-s3-storage changelog
 ===========================
 
+0.12.5
+------
+
+- Added support for custom URL parameters in calls to `url()` (@emesik).
+- Calls to `size()` now report uncompressed size when `AWS_S3_GZIP` is enabled (@emesik).
+- Allowing storage classes to be picked (@fdemmer).
+- Documentation improvements, bugfixes and minor tweaks (@hramezani, @michael-k).
+
+
 0.12.4
 ------
 

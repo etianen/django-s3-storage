@@ -1,6 +1,8 @@
+dist: xenial
 sudo: false
 language: python
 python:
+  - 3.7
   - 3.6
   - 3.5
 cache: pip
@@ -16,15 +18,13 @@ env:
     # AWS_S3_BUCKET_NAME
     - secure: "J9RE3MbU26kmTg5y8WwMD0RnW99SxjJvNY4uFfdbDuPlAn6BV9BQuq1qaPYGksdYdJ8WmXhlRKIhjXjZIgvIEzDQ0msPbJ3dU7uCJFrZRVG3I/jbZR0EfcOiWCaDuQU2TDZw5bo4qanTr4nnZpnBVqj0erjytxUkyqIuRAR3xOg="
   matrix:
-    - DJANGO='>=2.0,<2.1'
-    - DJANGO='>=2.1,<2.2'
+    - DJANGO='~=2.0.0'
+    - DJANGO='~=2.1.0'
+    - DJANGO='~=2.2.0'
 matrix:
   fast_finish: true
   include:
-    - { python: "2.7", env: DJANGO="==1.11.*" }
-
-    - { python: "3.7", env: DJANGO="==2.0.*", dist: xenial, sudo: true }
-    - { python: "3.7", env: DJANGO="==2.1.*", dist: xenial, sudo: true }
+    - { python: "2.7", env: DJANGO="~=1.11.0" }
 install:
  - pip install flake8 coverage django$DJANGO requests pytz -e .
 script:
@@ -39,7 +39,7 @@ deploy:
     secure: T6owRJudXfLP2cntqbsyAMHnOq6rbIAgXfEt1a9smDjyxyXpCH+XAxUWw+5mMZ3mFALyquZGzodtq+cil2j7XkB5gW0fQfo8YtoqjrrIdgvmWLS2zur9c1U+DXIG8vjLLkMiKTg1TXoeb0phELIme4Clxb9KuSKTaFosKWdVy8g=
   on:
     tags: true
-    condition: $DJANGO = '>=2.0,<2.1'
+    condition: $DJANGO = '~=2.2.0'
     python: 3.6
     repo: etianen/django-s3-storage
   distributions: sdist

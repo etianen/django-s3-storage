@@ -2,9 +2,9 @@ dist: xenial
 sudo: false
 language: python
 python:
+  - 3.8
   - 3.7
   - 3.6
-  - 3.5
 cache: pip
 env:
   global:
@@ -18,14 +18,12 @@ env:
     # AWS_S3_BUCKET_NAME
     - secure: "J9RE3MbU26kmTg5y8WwMD0RnW99SxjJvNY4uFfdbDuPlAn6BV9BQuq1qaPYGksdYdJ8WmXhlRKIhjXjZIgvIEzDQ0msPbJ3dU7uCJFrZRVG3I/jbZR0EfcOiWCaDuQU2TDZw5bo4qanTr4nnZpnBVqj0erjytxUkyqIuRAR3xOg="
   matrix:
-    - DJANGO='~=2.0.0'
-    - DJANGO='~=2.1.0'
-    - DJANGO='~=2.2.0'
+    - DJANGO='~=2.2.7'
+    - DJANGO='>=3.0b1,<3.1'
 matrix:
   fast_finish: true
   include:
-    - { python: "2.7", env: DJANGO="~=1.11.0" }
-    - { python: "3.8", env: DJANGO="~=2.2.8" }
+    - { python: "3.5", env: DJANGO="~=2.2" }
 install:
  - pip install flake8 coverage django$DJANGO requests pytz -e .
 script:

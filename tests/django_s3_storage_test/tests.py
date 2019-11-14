@@ -1,20 +1,23 @@
 # coding=utf-8
 from __future__ import unicode_literals
+
+import posixpath
+import time
 from contextlib import contextmanager
 from datetime import timedelta
-import posixpath
+from io import StringIO
+from urllib.parse import urlsplit, urlunsplit
+
 import requests
-import time
+from django.contrib.staticfiles.storage import staticfiles_storage
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
-from django.core.management import call_command, CommandError
-from django.contrib.staticfiles.storage import staticfiles_storage
+from django.core.management import CommandError, call_command
 from django.test import SimpleTestCase
-from django.utils.six import StringIO, assertRegex
-from django.utils.six.moves.urllib.parse import urlsplit, urlunsplit
 from django.utils import timezone
 from django.utils.timezone import is_naive, make_naive, utc
+
 from django_s3_storage.storage import S3Error, S3Storage, StaticS3Storage
 
 
@@ -354,7 +357,7 @@ class TestS3Storage(SimpleTestCase):
             # The URL should not contain query string authentication.
             self.assertFalse(urlsplit(url).query)
             # The URL should contain an MD5 hash.
-            assertRegex(self, url, r"foo\.[0-9a-f]{12}\.css$")
+            self.assertRegex(url, r"foo\.[0-9a-f]{12}\.css$")
             # The hashed name should be accessible and have a huge cache control.
             response = requests.get(url)
             self.assertEqual(response.status_code, 200)

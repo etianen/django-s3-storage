@@ -10,6 +10,7 @@ from functools import wraps
 from io import TextIOBase
 from tempfile import SpooledTemporaryFile
 from threading import local
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import boto3
 from botocore.client import Config
@@ -22,7 +23,6 @@ from django.core.files.storage import Storage
 from django.core.signals import setting_changed
 from django.utils.deconstruct import deconstructible
 from django.utils.encoding import filepath_to_uri, force_bytes, force_str, force_text
-from django.utils.six.moves.urllib.parse import urljoin, urlsplit, urlunsplit
 from django.utils.timezone import make_naive, utc
 
 # Some parts of Django expect an IOError, other parts expect an OSError, so this class inherits both!

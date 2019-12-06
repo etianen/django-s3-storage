@@ -25,15 +25,6 @@ from django.utils.deconstruct import deconstructible
 from django.utils.encoding import filepath_to_uri, force_bytes, force_str, force_text
 from django.utils.timezone import make_naive, utc
 
-# Some parts of Django expect an IOError, other parts expect an OSError, so this class inherits both!
-# In Python 3, the distinction is irrelevant, but in Python 2 they are distinct classes.
-if OSError is IOError:
-    class S3Error(OSError):
-        pass
-else:
-    class S3Error(OSError, IOError):
-        pass
-
 
 def _wrap_errors(func):
     @wraps(func)
@@ -41,7 +32,11 @@ def _wrap_errors(func):
         try:
             return func(self, name, *args, **kwargs)
         except ClientError as ex:
-            raise S3Error("S3Storage error at {!r}: {}".format(name, force_text(ex)))
+            code = ex.response.get("Error", {}).get("Code", "Unknown")
+            err_cls = OSError
+            if code == "NoSuchKey":
+                err_cls = FileNotFoundError
+            raise err_cls("S3Storage error at {!r}: {}".format(name, force_text(ex)))
     return _do_wrap_errors
 
 
@@ -365,7 +360,7 @@ class S3Storage(Storage):
         # This may be a file or a directory. Check if getting the file metadata throws an error.
         try:
             self.meta(name)
-        except S3Error:
+        except OSError:
             # It's not a file, but it might be a directory. Check again that it's not a directory.
             return self.exists(name + "/")
         else:
@@ -444,7 +439,7 @@ class S3Storage(Storage):
                 name = posixpath.relpath(entry["Key"], self.settings.AWS_S3_KEY_PREFIX)
                 try:
                     obj = self.meta(name)
-                except S3Error:
+                except OSError:
                     # This may be caused by a race condition, with the entry being deleted before it was accessed.
                     # Alternatively, the key may be something that, when normalized, has a different path, which will
                     # mean that the key's meta cannot be accessed.

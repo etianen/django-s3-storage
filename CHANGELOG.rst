@@ -1,6 +1,13 @@
 django-s3-storage changelog
 ===========================
 
+0.13.0
+------
+
+- Django 3.0 support (@michael-k, @etianen).
+- Removed `S3Error`, replaced with built-in `OSError` and subclasses (@etianen).
+
+
 0.12.5
 ------
 

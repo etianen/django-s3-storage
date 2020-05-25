@@ -177,8 +177,22 @@ class S3Storage(Storage):
                 ),
             )
         # Validate settings.
+        if not self.settings.AWS_S3_BUCKET_NAME:
+            raise ImproperlyConfigured(f"Setting AWS_S3_BUCKET_NAME{self.s3_settings_suffix} is required.")
+        if not (
+            (self.settings.AWS_ACCESS_KEY_ID and self.settings.AWS_SECRET_ACCESS_KEY) or
+            self.settings.AWS_SESSION_TOKEN
+        ):
+            raise ImproperlyConfigured(
+                f"Settings AWS_ACCESS_KEY_ID{self.s3_settings_suffix} "
+                f"and AWS_SECRET_ACCESS_KEY{self.s3_settings_suffix}, or "
+                f"AWS_SESSION_TOKEN{self.s3_settings_suffix}, is required."
+            )
         if self.settings.AWS_S3_PUBLIC_URL and self.settings.AWS_S3_BUCKET_AUTH:
-            raise ImproperlyConfigured("Cannot use AWS_S3_BUCKET_AUTH with AWS_S3_PUBLIC_URL.")
+            raise ImproperlyConfigured(
+                f"Cannot use AWS_S3_BUCKET_AUTH{self.s3_settings_suffix} "
+                f"with AWS_S3_PUBLIC_URL{self.s3_settings_suffix}."
+            )
         # Create a thread-local connection manager.
         self._connections = _Local(self)
 

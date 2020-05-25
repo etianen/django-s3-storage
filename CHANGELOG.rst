@@ -1,6 +1,12 @@
 django-s3-storage changelog
 ===========================
 
+0.13.1
+------
+
+- Added further settings validation to help newcomers to the library (@etianen).
+
+
 0.13.0
 ------
 

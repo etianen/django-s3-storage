@@ -1,6 +1,13 @@
 django-s3-storage changelog
 ===========================
 
+0.13.2
+------
+
+- Removed validation of `AWS_SECRET_ACCESS_KEY`, `AWS_ACCESS_KEY_ID`, and `AWS_SESSION_TOKEN`, because these can
+  be detected by boto by using the AWS instance metadata service (@MichaelAnckaert).
+
+
 0.13.1
 ------
 

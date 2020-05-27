@@ -95,9 +95,15 @@ Use the following settings to configure the S3 file storage. You must provide at
     # Important: Changing this setting will not affect existing files.
     AWS_S3_METADATA = {}
 
-    # If True, then files will be stored using server-side encryption.
+    # If True, then files will be stored using AES256 server-side encryption.
+    # If this is a string value (e.g., "aws:kms"), that encryption type will be used.
+    # Otherwise, server-side encryption is not be enabled.
     # Important: Changing this setting will not affect existing files.
     AWS_S3_ENCRYPT_KEY = False
+
+    # The AWS S3 KMS encryption key ID (the `SSEKMSKeyId` parameter) is set from this string if present.
+    # This is only relevant if AWS S3 KMS server-side encryption is enabled (above).
+    AWS_S3_KMS_ENCRYPTION_KEY_ID = ""
 
     # If True, then text files will be stored using gzip content encoding. Files will only be gzipped if their
     # compressed size is smaller than their uncompressed size.
@@ -109,17 +115,34 @@ Use the following settings to configure the S3 file storage. You must provide at
 
     # If True, then files with the same name will overwrite each other. By default it's set to False to have
     # extra characters appended.
-    AWS_S3_FILE_OVERWRITE =  False
+    AWS_S3_FILE_OVERWRITE = False
 
 **Important:** Several of these settings (noted above) will not affect existing files. To sync the new settings to
 existing files, run ``./manage.py s3_sync_meta django.core.files.storage.default_storage``.
 
+These settings can be provided in field storage definition like this:
+
+.. code:: python
+
+    from django.db import models
+
+    from django_s3_storage.storage import S3Storage
+
+    storage = S3Storage(aws_s3_bucket_name='test_bucket')
+
+
+    class Car(models.Model):
+        name = models.CharField(max_length=255)
+        photo = models.ImageField(storage=storage)
+
+**Note:** settings key in storage definition should be `lowercase`.
 
 Staticfiles storage settings
 ----------------------------
 
-All of the file storage settings are available for the staticfiles storage, suffixed with ``_STATIC``.
-You must provide at least ``AWS_S3_BUCKET_NAME_STATIC``.
+All of the file storage settings are available for the staticfiles storage, suffixed with ``_STATIC``. You must provide
+at least ``AWS_S3_BUCKET_NAME_STATIC``. Remember to run ``./manage.py collectstatic`` after changing your staticfiles
+storage backend.
 
 The following staticfiles storage settings have different default values to their file storage counterparts.
 
@@ -158,6 +181,30 @@ To make media files public, and enable aggressive caching, make the following ch
 **Important:** By making these changes, all media files will be public. Ensure they do not contain confidential information.
 
 The default settings for staticfiles storage are already optimizing for aggressive caching.
+
+
+Custom URLs
+-----------
+
+Sometimes the default settings aren't flexible enough and custom handling of object is needed. For
+example, the ``Content-Disposition`` might be set to force download of a file instead of opening
+it:
+
+.. code:: python
+
+    url = storage.url("foo/bar.pdf", extra_params={"ResponseContentDisposition": "attachment"})
+
+Another example is a link to a specific version of the file (within a bucket that has versioning
+enabled):
+
+.. code:: python
+
+    url = storage.url("foo/bar.pdf", extra_params={"VersionId": "FRy3fTduRtqHsRAoNp0REzPJj_WunDfl"})
+
+The ``extra_params`` dict accepts the same parameters as `get_object() <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.get_object>`_.
+
+Please note, however, that **custom URLs will not work with AWS_S3_PUBLIC_URL** where the
+URL doesn't accept extra parameters, and it will raise ``ValueError``.
 
 
 Content type of the uploaded files

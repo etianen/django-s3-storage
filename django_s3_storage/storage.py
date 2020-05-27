@@ -1,38 +1,31 @@
 from __future__ import unicode_literals
+
 import gzip
 import mimetypes
 import os
 import posixpath
 import shutil
-from io import TextIOBase
 from contextlib import closing
 from functools import wraps
+from io import TextIOBase
 from tempfile import SpooledTemporaryFile
 from threading import local
+from urllib.parse import urljoin, urlsplit, urlunsplit
+
 import boto3
-from botocore.exceptions import ClientError
 from botocore.client import Config
+from botocore.exceptions import ClientError
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
-from django.core.files.storage import Storage
-from django.core.files.base import File
-from django.core.signals import setting_changed
 from django.contrib.staticfiles.storage import ManifestFilesMixin
-from django.utils.six.moves.urllib.parse import urlsplit, urlunsplit, urljoin
+from django.core.exceptions import ImproperlyConfigured
+from django.core.files.base import File
+from django.core.files.storage import Storage
+from django.core.signals import setting_changed
 from django.utils.deconstruct import deconstructible
-from django.utils.encoding import force_bytes, filepath_to_uri, force_text, force_str
+from django.utils.encoding import filepath_to_uri, force_bytes, force_str, force_text
 from django.utils.timezone import make_naive, utc
 import magic
 
-
-# Some parts of Django expect an IOError, other parts expect an OSError, so this class inherits both!
-# In Python 3, the distinction is irrelevant, but in Python 2 they are distinct classes.
-if OSError is IOError:
-    class S3Error(OSError):
-        pass
-else:
-    class S3Error(OSError, IOError):
-        pass
 
 mime_detector = magic.Magic(mime=True)
 READ_MAGIC_BYTES = 1024  # Most of the file types can be identified from the header - don't read the whole file.
@@ -44,7 +37,11 @@ def _wrap_errors(func):
         try:
             return func(self, name, *args, **kwargs)
         except ClientError as ex:
-            raise S3Error("S3Storage error at {!r}: {}".format(name, force_text(ex)))
+            code = ex.response.get("Error", {}).get("Code", "Unknown")
+            err_cls = OSError
+            if code == "NoSuchKey":
+                err_cls = FileNotFoundError
+            raise err_cls("S3Storage error at {!r}: {}".format(name, force_text(ex)))
     return _do_wrap_errors
 
 
@@ -72,6 +69,16 @@ def _wrap_path_impl(func):
         # converting them back to posix paths.
         return _to_posix_path(func(self, _to_sys_path(name), *args, **kwargs))
     return do_wrap_path_impl
+
+
+def unpickle_helper(cls, kwargs):
+    return cls(**kwargs)
+
+
+Settings = type(force_str("Settings"), (), {})
+
+
+_UNCOMPRESSED_SIZE_META_KEY = "uncompressed_size"
 
 
 class S3File(File):
@@ -111,7 +118,8 @@ class _Local(local):
             connection_kwargs["aws_session_token"] = storage.settings.AWS_SESSION_TOKEN
         if storage.settings.AWS_S3_ENDPOINT_URL:
             connection_kwargs["endpoint_url"] = storage.settings.AWS_S3_ENDPOINT_URL
-        self.s3_connection = boto3.client("s3", config=Config(
+        self.session = boto3.session.Session()
+        self.s3_connection = self.session.client("s3", config=Config(
             s3={"addressing_style": storage.settings.AWS_S3_ADDRESSING_STYLE},
             signature_version=storage.settings.AWS_S3_SIGNATURE_VERSION,
         ), **connection_kwargs)
@@ -144,6 +152,7 @@ class S3Storage(Storage):
         "AWS_S3_CONTENT_LANGUAGE": "",
         "AWS_S3_METADATA": {},
         "AWS_S3_ENCRYPT_KEY": False,
+        "AWS_S3_KMS_ENCRYPTION_KEY_ID": "",
         "AWS_S3_GZIP": True,
         "AWS_S3_SIGNATURE_VERSION": "s3v4",
         "AWS_S3_FILE_OVERWRITE": False
@@ -152,7 +161,7 @@ class S3Storage(Storage):
     s3_settings_suffix = ""
 
     def _setup(self):
-        self.settings = type(force_str("Settings"), (), {})()
+        self.settings = Settings()
         # Configure own settings.
         for setting_key, setting_default_value in self.default_auth_settings.items():
             setattr(
@@ -173,8 +182,13 @@ class S3Storage(Storage):
                 ),
             )
         # Validate settings.
+        if not self.settings.AWS_S3_BUCKET_NAME:
+            raise ImproperlyConfigured(f"Setting AWS_S3_BUCKET_NAME{self.s3_settings_suffix} is required.")
         if self.settings.AWS_S3_PUBLIC_URL and self.settings.AWS_S3_BUCKET_AUTH:
-            raise ImproperlyConfigured("Cannot use AWS_S3_BUCKET_AUTH with AWS_S3_PUBLIC_URL.")
+            raise ImproperlyConfigured(
+                f"Cannot use AWS_S3_BUCKET_AUTH{self.s3_settings_suffix} "
+                f"with AWS_S3_PUBLIC_URL{self.s3_settings_suffix}."
+            )
         # Create a thread-local connection manager.
         self._connections = _Local(self)
 
@@ -201,6 +215,9 @@ class S3Storage(Storage):
         setting_changed.connect(self._setting_changed_received)
         # All done!
         super(S3Storage, self).__init__()
+
+    def __reduce__(self):
+        return unpickle_helper, (self.__class__, self._kwargs)
 
     # Helpers.
 
@@ -241,8 +258,13 @@ class S3Storage(Storage):
         if content_langauge:
             params["ContentLanguage"] = content_langauge
         # Set server-side encryption.
-        if self.settings.AWS_S3_ENCRYPT_KEY:
-            params["ServerSideEncryption"] = "AES256"
+        if self.settings.AWS_S3_ENCRYPT_KEY:  # If this if False / None / empty then no encryption
+            if isinstance(self.settings.AWS_S3_ENCRYPT_KEY, str):
+                params["ServerSideEncryption"] = self.settings.AWS_S3_ENCRYPT_KEY
+                if self.settings.AWS_S3_KMS_ENCRYPTION_KEY_ID:
+                    params["SSEKMSKeyId"] = self.settings.AWS_S3_KMS_ENCRYPTION_KEY_ID
+            else:
+                params["ServerSideEncryption"] = "AES256"
         # All done!
         return params
 
@@ -291,10 +313,12 @@ class S3Storage(Storage):
                 with closing(gzip.GzipFile(name, "wb", 9, temp_file)) as gzip_file:
                     shutil.copyfileobj(content, gzip_file)
                 # Only use the compressed version if the zipped version is actually smaller!
-                if temp_file.tell() < content.tell():
+                orig_size = content.tell()
+                if temp_file.tell() < orig_size:
                     temp_file.seek(0)
                     content = temp_file
                     put_params["ContentEncoding"] = "gzip"
+                    put_params["Metadata"][_UNCOMPRESSED_SIZE_META_KEY] = "{:d}".format(orig_size)
                 else:
                     content.seek(0)
         # Save the file.
@@ -373,7 +397,7 @@ class S3Storage(Storage):
         # This may be a file or a directory. Check if getting the file metadata throws an error.
         try:
             self.meta(name)
-        except S3Error:
+        except OSError:
             # It's not a file, but it might be a directory. Check again that it's not a directory.
             return self.exists(name + "/")
         else:
@@ -400,16 +424,28 @@ class S3Storage(Storage):
         return dirs, files
 
     def size(self, name):
-        return self.meta(name)["ContentLength"]
+        meta = self.meta(name)
+        try:
+            if meta["ContentEncoding"] == "gzip":
+                return int(meta["Metadata"]["uncompressed_size"])
+        except KeyError:
+            return meta["ContentLength"]
 
-    def url(self, name):
+    def url(self, name, extra_params=None):
         # Use a public URL, if specified.
         if self.settings.AWS_S3_PUBLIC_URL:
+            if extra_params:
+                raise ValueError(
+                    "Use of extra_params to generate custom URLs is not allowed "
+                    "with AWS_S3_PUBLIC_URL"
+                )
             return urljoin(self.settings.AWS_S3_PUBLIC_URL, filepath_to_uri(name))
         # Otherwise, generate the URL.
+        params = extra_params.copy() if extra_params else {}
+        params.update(self._object_params(name))
         url = self.s3_connection.generate_presigned_url(
             ClientMethod="get_object",
-            Params=self._object_params(name),
+            Params=params,
             ExpiresIn=self.settings.AWS_S3_MAX_AGE_SECONDS,
         )
         # Strip off the query params if we're not interested in bucket auth.
@@ -440,7 +476,7 @@ class S3Storage(Storage):
                 name = posixpath.relpath(entry["Key"], self.settings.AWS_S3_KEY_PREFIX)
                 try:
                     obj = self.meta(name)
-                except S3Error:
+                except OSError:
                     # This may be caused by a race condition, with the entry being deleted before it was accessed.
                     # Alternatively, the key may be something that, when normalized, has a different path, which will
                     # mean that the key's meta cannot be accessed.
@@ -450,6 +486,12 @@ class S3Storage(Storage):
                 content_encoding = obj.get("ContentEncoding")
                 if content_encoding:
                     put_params["ContentEncoding"] = content_encoding
+                    if content_encoding == "gzip":
+                        try:
+                            put_params["Metadata"][_UNCOMPRESSED_SIZE_META_KEY] = \
+                                obj["Metadata"][_UNCOMPRESSED_SIZE_META_KEY]
+                        except KeyError:
+                            pass
                 # Update the metadata.
                 self.s3_connection.copy_object(
                     ContentType=obj["ContentType"],

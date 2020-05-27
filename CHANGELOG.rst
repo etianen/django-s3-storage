@@ -1,6 +1,48 @@
 django-s3-storage changelog
 ===========================
 
+0.13.2
+------
+
+- Removed validation of `AWS_SECRET_ACCESS_KEY`, `AWS_ACCESS_KEY_ID`, and `AWS_SESSION_TOKEN`, because these can
+  be detected by boto by using the AWS instance metadata service (@MichaelAnckaert).
+
+
+0.13.1
+------
+
+- Added further settings validation to help newcomers to the library (@etianen).
+
+
+0.13.0
+------
+
+- Django 3.0 support (@michael-k, @etianen).
+- Removed `S3Error`, replaced with built-in `OSError` and subclasses (@etianen).
+
+
+0.12.5
+------
+
+- Added support for custom URL parameters in calls to `url()` (@emesik).
+- Calls to `size()` now report uncompressed size when `AWS_S3_GZIP` is enabled (@emesik).
+- Allowing storage classes to be picked (@fdemmer).
+- Documentation improvements, bugfixes and minor tweaks (@hramezani, @michael-k).
+
+
+0.12.4
+------
+
+- Added support for AWS KMS encryption, using the ``AWS_S3_ENCRYPT_KEY`` and ``AWS_S3_KMS_ENCRYPTION_KEY_ID`` settings
+  (@MartinFalatic).
+
+
+0.12.3
+------
+
+- Actually fixed issues using ``S3Storage`` in a multithreaded environment.
+
+
 0.12.2
 ------
 

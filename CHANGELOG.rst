@@ -1,6 +1,12 @@
 django-s3-storage changelog
 ===========================
 
+0.13.3
+------
+
+- Fixed error in `exists()` when using DigitalOcean's AMS3 (@heckad).
+
+
 0.13.2
 ------
 

@@ -346,14 +346,6 @@ class S3Storage(Storage):
     def meta(self, name):
         """Returns a dictionary of metadata associated with the key."""
         return self.s3_connection.head_object(**self._object_params(name))
-    
-    @_wrap_errors
-    def list_objects_v2(self, name):
-        return self.s3_connection.list_objects_v2(
-            Bucket=self.settings.AWS_S3_BUCKET_NAME,
-            MaxKeys=1,
-            Prefix=self._get_key_name(name) + "/",  # Add the slash again, since _get_key_name removes it.
-        )
 
     @_wrap_errors
     def delete(self, name):
@@ -365,8 +357,12 @@ class S3Storage(Storage):
             # This looks like a directory, but on S3 directories are virtual, so we need to see if the key starts
             # with this prefix.
             try:
-                results = self.list_objects_v2(name)
-            except OSError:
+                results = self.s3_connection.list_objects_v2(
+                    Bucket=self.settings.AWS_S3_BUCKET_NAME,
+                    MaxKeys=1,
+                    Prefix=self._get_key_name(name) + "/",  # Add the slash again, since _get_key_name removes it.
+                )
+            except ClientError:
                 return False
             else:
                 return "Contents" in results

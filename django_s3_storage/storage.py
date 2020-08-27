@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import gzip
+import logging
 import mimetypes
 import os
 import posixpath
@@ -25,6 +26,7 @@ from django.utils.deconstruct import deconstructible
 from django.utils.encoding import filepath_to_uri, force_bytes, force_str, force_text
 from django.utils.timezone import make_naive, utc
 
+log = logging.getLogger(__name__)
 
 def _wrap_errors(func):
     @wraps(func)
@@ -180,9 +182,12 @@ class S3Storage(Storage):
         if not self.settings.AWS_S3_BUCKET_NAME:
             raise ImproperlyConfigured(f"Setting AWS_S3_BUCKET_NAME{self.s3_settings_suffix} is required.")
         if self.settings.AWS_S3_PUBLIC_URL and self.settings.AWS_S3_BUCKET_AUTH:
-            raise ImproperlyConfigured(
-                f"Cannot use AWS_S3_BUCKET_AUTH{self.s3_settings_suffix} "
-                f"with AWS_S3_PUBLIC_URL{self.s3_settings_suffix}."
+            log.warning(
+                "Using AWS_S3_BUCKET_AUTH%s with AWS_S3_PUBLIC_URL%s. "
+                "Private files on S3 may be inaccessible via the public URL. "
+                "See https://github.com/etianen/django-s3-storage/issues/114 ",
+                self.s3_settings_suffix,
+                self.s3_settings_suffix,
             )
         # Create a thread-local connection manager.
         self._connections = _Local(self)

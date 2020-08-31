@@ -71,8 +71,7 @@ Use the following settings to configure the S3 file storage. You must provide at
     # Important: Changing this setting will not affect existing files.
     AWS_S3_MAX_AGE_SECONDS = 60 * 60  # 1 hours.
 
-    # A URL prefix to be used for generated URLs. This is useful if your bucket is served through a CDN. This setting
-    # cannot be used with `AWS_S3_BUCKET_AUTH`.
+    # A URL prefix to be used for generated URLs. This is useful if your bucket is served through a CDN.
     AWS_S3_PUBLIC_URL = ""
 
     # If True, then files will be stored with reduced redundancy. Check the S3 documentation and make sure you

@@ -28,6 +28,7 @@ from django.utils.timezone import make_naive, utc
 
 log = logging.getLogger(__name__)
 
+
 def _wrap_errors(func):
     @wraps(func)
     def _do_wrap_errors(self, name, *args, **kwargs):

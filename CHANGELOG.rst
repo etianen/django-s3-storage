@@ -1,6 +1,12 @@
 django-s3-storage changelog
 ===========================
 
+0.13.4
+------
+
+- Allowing both `AWS_S3_BUCKET_AUTH` and `AWS_S3_PUBLIC_URL` to be set (with a stern warning!) (@ipmb).
+
+
 0.13.3
 ------
 

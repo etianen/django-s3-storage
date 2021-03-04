@@ -157,7 +157,7 @@ The following additional staticfiles storage settings also exist:
     # For ManifestStaticS3Storage, how long the browser should cache md5-hashed filenames.  This affects the expiry of
     # authentication tokens if `AWS_S3_BUCKET_AUTH` is True. It also affects the "Cache-Control" header of the files.
     # Important: Changing this setting will not affect existing files.
-    AWS_S3_MAX_AGE_SECONDS_CACHED_STATIC = 60 * 60 * 24 * 265  # 1 year.
+    AWS_S3_MAX_AGE_SECONDS_CACHED_STATIC = 60 * 60 * 24 * 365  # 1 year.
 
 
 **Important:** Several of these settings (noted above) will not affect existing files. To sync the new settings to

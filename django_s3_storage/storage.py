@@ -101,7 +101,7 @@ class _Local(local):
     Thread-local connection manager.
 
     Boto3 objects are not thread-safe.
-    http://boto3.readthedocs.io/en/latest/guide/resources.html#multithreading-multiprocessing
+    https://boto3.amazonaws.com/v1/documentation/api/latest/guide/resources.html#multithreading-and-multiprocessing
     """
 
     def __init__(self, storage):

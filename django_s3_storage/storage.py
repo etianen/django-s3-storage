@@ -11,8 +11,6 @@ from functools import wraps
 from io import TextIOBase
 from tempfile import SpooledTemporaryFile
 from threading import local
-from urllib.parse import urljoin, urlsplit, urlunsplit
-
 import boto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
@@ -26,6 +24,13 @@ from django.utils.deconstruct import deconstructible
 from django.utils.encoding import filepath_to_uri, force_bytes, force_str, force_text
 from django.utils.timezone import make_naive, utc
 
+try:
+    """ Python 3.6"""
+    from urllib.parse import urljoin, urlsplit, urlunsplit
+except:
+    """ Python 2.7 """
+    from urlparse import urljoin, urlsplit, urlunsplit
+
 log = logging.getLogger(__name__)
 
 
@@ -38,7 +43,12 @@ def _wrap_errors(func):
             code = ex.response.get("Error", {}).get("Code", "Unknown")
             err_cls = OSError
             if code == "NoSuchKey":
-                err_cls = FileNotFoundError
+                try:
+                    """ Python 3 """
+                    err_cls = FileNotFoundError
+                except NameError:
+                    """ Python 2 """
+                    err_cls = IOError
             raise err_cls("S3Storage error at {!r}: {}".format(name, force_text(ex)))
     return _do_wrap_errors
 
@@ -181,7 +191,7 @@ class S3Storage(Storage):
             )
         # Validate settings.
         if not self.settings.AWS_S3_BUCKET_NAME:
-            raise ImproperlyConfigured(f"Setting AWS_S3_BUCKET_NAME{self.s3_settings_suffix} is required.")
+            raise ImproperlyConfigured("Unknown S3Storage parameter: {} is required".format(self.s3_settings_suffix))
         if self.settings.AWS_S3_PUBLIC_URL and self.settings.AWS_S3_BUCKET_AUTH:
             log.warning(
                 "Using AWS_S3_BUCKET_AUTH%s with AWS_S3_PUBLIC_URL%s. "

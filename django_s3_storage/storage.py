@@ -23,7 +23,7 @@ from django.core.files.base import File
 from django.core.files.storage import Storage
 from django.core.signals import setting_changed
 from django.utils.deconstruct import deconstructible
-from django.utils.encoding import filepath_to_uri, force_bytes, force_str, force_text
+from django.utils.encoding import filepath_to_uri, force_bytes, force_str
 from django.utils.timezone import make_naive, utc
 
 log = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ def _wrap_errors(func):
             err_cls = OSError
             if code == "NoSuchKey":
                 err_cls = FileNotFoundError
-            raise err_cls("S3Storage error at {!r}: {}".format(name, force_text(ex)))
+            raise err_cls("S3Storage error at {!r}: {}".format(name, force_str(ex)))
     return _do_wrap_errors
 
 

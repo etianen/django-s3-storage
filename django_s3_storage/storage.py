@@ -47,10 +47,6 @@ def _callable_setting(value, name):
     return value(name) if callable(value) else value
 
 
-def _temporary_file():
-    return SpooledTemporaryFile(max_size=1024*1024*10)  # 10 MB.
-
-
 def _to_sys_path(name):
     return name.replace("/", os.sep)
 
@@ -269,6 +265,10 @@ class S3Storage(Storage):
         # All done!
         return params
 
+    def new_temporary_file(self):
+        """Returns a new file to use when opening from or saving to S3"""
+        return SpooledTemporaryFile(max_size=1024*1024*10)  # 10 MB.
+
     @_wrap_errors
     def _open(self, name, mode="rb"):
         if mode != "rb":
@@ -276,7 +276,7 @@ class S3Storage(Storage):
         # Load the key into a temporary file. It would be nice to stream the
         # content, but S3 doesn't support seeking, which is sometimes needed.
         obj = self.s3_connection.get_object(**self._object_params(name))
-        content = _temporary_file()
+        content = self.new_temporary_file()
         shutil.copyfileobj(obj["Body"], content)
         content.seek(0)
         # Un-gzip if required.
@@ -294,7 +294,7 @@ class S3Storage(Storage):
         content.seek(0)
         # Convert content to bytes.
         if isinstance(content.file, TextIOBase):
-            temp_file = _temporary_file()
+            temp_file = self.new_temporary_file()
             temp_files.append(temp_file)
             for chunk in content.chunks():
                 temp_file.write(force_bytes(chunk))
@@ -311,7 +311,7 @@ class S3Storage(Storage):
             content_type_subtype = content_type_subtype.split("+")[-1]
             if content_type_family == "text" or content_type_subtype in ("xml", "json", "html", "javascript"):
                 # Compress the content.
-                temp_file = _temporary_file()
+                temp_file = self.new_temporary_file()
                 temp_files.append(temp_file)
                 with closing(gzip.GzipFile(name, "wb", 9, temp_file)) as gzip_file:
                     shutil.copyfileobj(content, gzip_file)

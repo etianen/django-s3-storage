@@ -325,7 +325,8 @@ class S3Storage(Storage):
                 else:
                     content.seek(0)
         # Save the file.
-        self.s3_connection.put_object(Body=content.read(), **put_params)
+        self.s3_connection.upload_fileobj(content, put_params.pop('Bucket'), put_params.pop('Key'),
+                                          ExtraArgs=put_params)
         # Close all temp files.
         for temp_file in temp_files:
             temp_file.close()

@@ -1,6 +1,16 @@
 django-s3-storage changelog
 ===========================
 
+0.13.5
+------
+
+- Saving files now uses multipart streaming upload, supporting arbitrarily large files without buffering contents to
+  memory (@bramverhelst).
+- Fixed some deprecation warnings (@kevinmarsh).
+- Documentation fixes (@riggedCoinflip, @dduong42).
+- CI improvements (@michael-k, @etianen).
+
+
 0.13.4
 ------
 

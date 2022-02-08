@@ -1,6 +1,10 @@
 django-s3-storage changelog
 ===========================
 
+0.13.6
+------
+- Adding `AWS_S3_USE_THREADS` to fix `gevent` issues (@uxio0).
+
 0.13.5
 ------
 

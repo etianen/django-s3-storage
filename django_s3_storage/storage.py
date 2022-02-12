@@ -358,6 +358,17 @@ class S3Storage(Storage):
     def delete(self, name):
         self.s3_connection.delete_object(**self._object_params(name))
 
+    @_wrap_errors
+    def copy(self, src_name, dst_name):
+        self.s3_connection.copy_object(
+            CopySource=self._object_params(src_name),
+            **self._object_params(dst_name))
+
+    @_wrap_errors
+    def rename(self, src_name, dst_name):
+        self.copy(src_name, dst_name)
+        self.s3_connection.delete_object(**self._object_params(src_name))
+
     def exists(self, name):
         name = _to_posix_path(name)
         if name.endswith("/"):

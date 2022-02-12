@@ -23,6 +23,11 @@ from django_s3_storage.storage import S3Storage, StaticS3Storage
 
 class TestS3Storage(SimpleTestCase):
 
+    def tearDown(self):
+        # clean up the dir
+        for entry in default_storage.listdir(""):
+            default_storage.delete("/".join(entry))
+
     # Helpers.
 
     @contextmanager
@@ -167,6 +172,20 @@ class TestS3Storage(SimpleTestCase):
             self.assertTrue(default_storage.exists("foo.txt"))
             default_storage.delete("foo.txt")
         self.assertFalse(default_storage.exists("foo.txt"))
+
+    def testCopy(self):
+        with self.save_file():
+            self.assertTrue(default_storage.exists("foo.txt"))
+            default_storage.copy("foo.txt", "bar.txt")
+            self.assertTrue(default_storage.exists("foo.txt"))
+        self.assertTrue(default_storage.exists("bar.txt"))
+
+    def testRename(self):
+        with self.save_file():
+            self.assertTrue(default_storage.exists("foo.txt"))
+            default_storage.rename("foo.txt", "bar.txt")
+            self.assertFalse(default_storage.exists("foo.txt"))
+        self.assertTrue(default_storage.exists("bar.txt"))
 
     def testModifiedTime(self):
         with self.save_file():

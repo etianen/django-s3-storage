@@ -15,6 +15,7 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import boto3
 from botocore.client import Config
+from boto3.s3.transfer import TransferConfig
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.contrib.staticfiles.storage import ManifestFilesMixin
@@ -149,7 +150,8 @@ class S3Storage(Storage):
         "AWS_S3_KMS_ENCRYPTION_KEY_ID": "",
         "AWS_S3_GZIP": True,
         "AWS_S3_SIGNATURE_VERSION": "s3v4",
-        "AWS_S3_FILE_OVERWRITE": False
+        "AWS_S3_FILE_OVERWRITE": False,
+        "AWS_S3_USE_THREADS": True,
     }
 
     s3_settings_suffix = ""
@@ -188,6 +190,8 @@ class S3Storage(Storage):
             )
         # Create a thread-local connection manager.
         self._connections = _Local(self)
+        # Set transfer config for S3 operations
+        self._transfer_config = TransferConfig(use_threads=self.settings.AWS_S3_USE_THREADS)
 
     @property
     def s3_connection(self):
@@ -326,7 +330,7 @@ class S3Storage(Storage):
                     content.seek(0)
         # Save the file.
         self.s3_connection.upload_fileobj(content, put_params.pop('Bucket'), put_params.pop('Key'),
-                                          ExtraArgs=put_params)
+                                          ExtraArgs=put_params, Config=self._transfer_config)
         # Close all temp files.
         for temp_file in temp_files:
             temp_file.close()

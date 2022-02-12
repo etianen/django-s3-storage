@@ -116,6 +116,10 @@ Use the following settings to configure the S3 file storage. You must provide at
     # extra characters appended.
     AWS_S3_FILE_OVERWRITE = False
 
+    # If True, use default behaviour for boto3 of using threads when doing S3 operations. If gevent or similar
+    # is used it must be disabled
+    AWS_S3_USE_THREADS = True
+
 **Important:** Several of these settings (noted above) will not affect existing files. To sync the new settings to
 existing files, run ``./manage.py s3_sync_meta django.core.files.storage.default_storage``.
 

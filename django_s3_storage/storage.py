@@ -525,6 +525,8 @@ class ManifestStaticS3Storage(ManifestFilesMixin, StaticS3Storage):
     })
 
     def _save(self, name, content):
+        # See: https://github.com/etianen/django-s3-storage/issues/141
+        # Fix adapted from: https://github.com/jschneier/django-storages/pull/968
         content.seek(0)
         with self.new_temporary_file() as tmp:
             shutil.copyfileobj(content, tmp)

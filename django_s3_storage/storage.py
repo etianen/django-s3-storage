@@ -524,6 +524,14 @@ class ManifestStaticS3Storage(ManifestFilesMixin, StaticS3Storage):
         "AWS_S3_MAX_AGE_SECONDS_CACHED": 60 * 60 * 24 * 365,  # 1 year.
     })
 
+    def _save(self, name, content):
+        # See: https://github.com/etianen/django-s3-storage/issues/141
+        # Fix adapted from: https://github.com/jschneier/django-storages/pull/968
+        content.seek(0)
+        with self.new_temporary_file() as tmp:
+            shutil.copyfileobj(content, tmp)
+            return super()._save(name, File(tmp))
+
     def post_process(self, *args, **kwargs):
         initial_aws_s3_max_age_seconds = self.settings.AWS_S3_MAX_AGE_SECONDS
         self.settings.AWS_S3_MAX_AGE_SECONDS = self.settings.AWS_S3_MAX_AGE_SECONDS_CACHED

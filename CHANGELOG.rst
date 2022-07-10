@@ -1,6 +1,12 @@
 django-s3-storage changelog
 ===========================
 
+0.13.7
+------
+
+- Fixed ``ValueError`` when using ``ManifestStaticS3Storage`` (@etianen).
+
+
 0.13.6
 ------
 

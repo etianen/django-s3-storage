@@ -528,7 +528,7 @@ class ManifestStaticS3Storage(ManifestFilesMixin, StaticS3Storage):
         content.seek(0)
         with self.new_temporary_file() as tmp:
             shutil.copyfileobj(content, tmp)
-            return super()._save(name, tmp)
+            return super()._save(name, File(tmp))
 
     def post_process(self, *args, **kwargs):
         initial_aws_s3_max_age_seconds = self.settings.AWS_S3_MAX_AGE_SECONDS

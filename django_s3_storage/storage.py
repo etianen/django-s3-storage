@@ -7,6 +7,7 @@ import os
 import posixpath
 import shutil
 from contextlib import closing
+from datetime import timezone
 from functools import wraps
 from io import TextIOBase
 from tempfile import SpooledTemporaryFile
@@ -25,7 +26,7 @@ from django.core.files.storage import Storage
 from django.core.signals import setting_changed
 from django.utils.deconstruct import deconstructible
 from django.utils.encoding import filepath_to_uri, force_bytes, force_str
-from django.utils.timezone import make_naive, utc
+from django.utils.timezone import make_naive
 
 log = logging.getLogger(__name__)
 
@@ -449,7 +450,7 @@ class S3Storage(Storage):
         return url
 
     def modified_time(self, name):
-        return make_naive(self.meta(name)["LastModified"], utc)
+        return make_naive(self.meta(name)["LastModified"], timezone.utc)
 
     created_time = accessed_time = modified_time
 

@@ -1,6 +1,11 @@
 django-s3-storage changelog
 ===========================
 
+0.13.8
+------
+
+- Fixed ``RemovedInDjango50Warning`` warning from use of ``django.utils.timezone.utc`` (@kevinmarsh).
+
 0.13.7
 ------
 

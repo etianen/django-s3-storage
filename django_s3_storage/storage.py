@@ -330,8 +330,16 @@ class S3Storage(Storage):
                 else:
                     content.seek(0)
         # Save the file.
-        self.s3_connection.upload_fileobj(content, put_params.pop('Bucket'), put_params.pop('Key'),
-                                          ExtraArgs=put_params, Config=self._transfer_config)
+        # HACK: Patch the file object to prevent `upload_fileobj` from closing it.
+        # https://github.com/boto/boto3/issues/929
+        original_close = content.close
+        content.close = lambda: None
+        try:
+            self.s3_connection.upload_fileobj(content, put_params.pop('Bucket'), put_params.pop('Key'),
+                                              ExtraArgs=put_params, Config=self._transfer_config)
+        finally:
+            # Restore the original close method.
+            content.close = original_close
         # Close all temp files.
         for temp_file in temp_files:
             temp_file.close()
@@ -524,14 +532,6 @@ class ManifestStaticS3Storage(ManifestFilesMixin, StaticS3Storage):
     default_s3_settings.update({
         "AWS_S3_MAX_AGE_SECONDS_CACHED": 60 * 60 * 24 * 365,  # 1 year.
     })
-
-    def _save(self, name, content):
-        # See: https://github.com/etianen/django-s3-storage/issues/141
-        # Fix adapted from: https://github.com/jschneier/django-storages/pull/968
-        content.seek(0)
-        with self.new_temporary_file() as tmp:
-            shutil.copyfileobj(content, tmp)
-            return super()._save(name, File(tmp))
 
     def post_process(self, *args, **kwargs):
         initial_aws_s3_max_age_seconds = self.settings.AWS_S3_MAX_AGE_SECONDS

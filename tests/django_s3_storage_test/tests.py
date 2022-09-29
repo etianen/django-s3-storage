@@ -1,6 +1,3 @@
-# coding=utf-8
-from __future__ import unicode_literals
-
 import posixpath
 import time
 from contextlib import contextmanager
@@ -246,7 +243,7 @@ class TestS3Storage(SimpleTestCase):
                 with self.settings(
                     AWS_S3_BUCKET_AUTH=False,
                     AWS_S3_MAX_AGE_SECONDS=9999,
-                    AWS_S3_CONTENT_DISPOSITION=lambda name: "attachment; filename={}".format(name),
+                    AWS_S3_CONTENT_DISPOSITION=lambda name: f"attachment; filename={name}",
                     AWS_S3_CONTENT_LANGUAGE="eo",
                     AWS_S3_METADATA={
                         "foo": "bar",
@@ -291,7 +288,7 @@ class TestS3Storage(SimpleTestCase):
                 with self.settings(
                     AWS_S3_BUCKET_AUTH=False,
                     AWS_S3_MAX_AGE_SECONDS=9999,
-                    AWS_S3_CONTENT_DISPOSITION=lambda name: "attachment; filename={}".format(name),
+                    AWS_S3_CONTENT_DISPOSITION=lambda name: f"attachment; filename={name}",
                     AWS_S3_CONTENT_LANGUAGE="eo",
                     AWS_S3_METADATA={
                         "foo": "bar",

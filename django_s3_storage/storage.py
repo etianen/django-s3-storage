@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import gzip
 import logging
 import mimetypes
@@ -41,7 +39,7 @@ def _wrap_errors(func):
             err_cls = OSError
             if code == "NoSuchKey":
                 err_cls = FileNotFoundError
-            raise err_cls("S3Storage error at {!r}: {}".format(name, force_str(ex)))
+            raise err_cls(f"S3Storage error at {name!r}: {force_str(ex)}")
     return _do_wrap_errors
 
 
@@ -84,13 +82,13 @@ class S3File(File):
     """
 
     def __init__(self, file, name, storage):
-        super(S3File, self).__init__(file, name)
+        super().__init__(file, name)
         self._storage = storage
 
     def open(self, mode="rb"):
         if self.closed:
             self.file = self._storage.open(self.name, mode).file
-        return super(S3File, self).open(mode)
+        return super().open(mode)
 
 
 class _Local(local):
@@ -209,14 +207,14 @@ class S3Storage(Storage):
                 kwarg_key.upper() not in self.default_auth_settings and
                 kwarg_key.upper() not in self.default_s3_settings
             ):
-                raise ImproperlyConfigured("Unknown S3Storage parameter: {}".format(kwarg_key))
+                raise ImproperlyConfigured(f"Unknown S3Storage parameter: {kwarg_key}")
         # Set up the storage.
         self._kwargs = kwargs
         self._setup()
         # Re-initialize the storage if an AWS setting changes.
         setting_changed.connect(self._setting_changed_received)
         # All done!
-        super(S3Storage, self).__init__()
+        super().__init__()
 
     def __reduce__(self):
         return unpickle_helper, (self.__class__, self._kwargs)
@@ -326,7 +324,7 @@ class S3Storage(Storage):
                     temp_file.seek(0)
                     content = temp_file
                     put_params["ContentEncoding"] = "gzip"
-                    put_params["Metadata"][_UNCOMPRESSED_SIZE_META_KEY] = "{:d}".format(orig_size)
+                    put_params["Metadata"][_UNCOMPRESSED_SIZE_META_KEY] = f"{orig_size:d}"
                 else:
                     content.seek(0)
         # Save the file.
@@ -350,17 +348,17 @@ class S3Storage(Storage):
 
     @_wrap_path_impl
     def get_valid_name(self, name):
-        return super(S3Storage, self).get_valid_name(name)
+        return super().get_valid_name(name)
 
     @_wrap_path_impl
     def get_available_name(self, name, max_length=None):
         if self.settings.AWS_S3_FILE_OVERWRITE:
             return _to_posix_path(name)
-        return super(S3Storage, self).get_available_name(name, max_length=max_length)
+        return super().get_available_name(name, max_length=max_length)
 
     @_wrap_path_impl
     def generate_filename(self, filename):
-        return super(S3Storage, self).generate_filename(filename)
+        return super().generate_filename(filename)
 
     @_wrap_errors
     def meta(self, name):
@@ -537,7 +535,6 @@ class ManifestStaticS3Storage(ManifestFilesMixin, StaticS3Storage):
         initial_aws_s3_max_age_seconds = self.settings.AWS_S3_MAX_AGE_SECONDS
         self.settings.AWS_S3_MAX_AGE_SECONDS = self.settings.AWS_S3_MAX_AGE_SECONDS_CACHED
         try:
-            for r in super(ManifestStaticS3Storage, self).post_process(*args, **kwargs):
-                yield r
+            yield from super().post_process(*args, **kwargs)
         finally:
             self.settings.AWS_S3_MAX_AGE_SECONDS = initial_aws_s3_max_age_seconds

@@ -116,6 +116,7 @@ class _Local(local):
         self.s3_connection = self.session.client("s3", config=Config(
             s3={"addressing_style": storage.settings.AWS_S3_ADDRESSING_STYLE},
             signature_version=storage.settings.AWS_S3_SIGNATURE_VERSION,
+            max_pool_connections=storage.settings.AWS_S3_MAX_POOL_CONNECTIONS
         ), **connection_kwargs)
 
 
@@ -151,6 +152,7 @@ class S3Storage(Storage):
         "AWS_S3_SIGNATURE_VERSION": "s3v4",
         "AWS_S3_FILE_OVERWRITE": False,
         "AWS_S3_USE_THREADS": True,
+        "AWS_S3_MAX_POOL_CONNECTIONS": 10
     }
 
     s3_settings_suffix = ""

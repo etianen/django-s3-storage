@@ -1,6 +1,12 @@
 django-s3-storage changelog
 ===========================
 
+0.13.10
+-------
+
+- Added ``AWS_S3_MAX_POOL_CONNECTIONS`` setting (@Routhinator).
+
+
 0.13.9
 ------
 

@@ -120,6 +120,12 @@ Use the following settings to configure the S3 file storage. You must provide at
     # is used it must be disabled
     AWS_S3_USE_THREADS = True
 
+    # Max pool of connections for massive S3 interactions
+    AWS_S3_MAX_POOL_CONNECTIONS = 10
+
+    # Time to raise timeout when submitting a new file
+    AWS_S3_CONNECT_TIMEOUT = 60
+
 **Important:** Several of these settings (noted above) will not affect existing files. To sync the new settings to
 existing files, run ``./manage.py s3_sync_meta django.core.files.storage.default_storage``.
 

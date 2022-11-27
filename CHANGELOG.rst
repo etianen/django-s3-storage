@@ -1,6 +1,11 @@
 django-s3-storage changelog
 ===========================
 
+0.13.11
+-------
+
+- Added ``AWS_S3_CONNECT_TIMEOUT`` setting (@roriz).
+
 0.13.10
 -------
 

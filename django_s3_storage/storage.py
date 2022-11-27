@@ -154,7 +154,7 @@ class S3Storage(Storage):
         "AWS_S3_FILE_OVERWRITE": False,
         "AWS_S3_USE_THREADS": True,
         "AWS_S3_MAX_POOL_CONNECTIONS": 10,
-        "AWS_S3_CONNECT_TIMEOUT": 60 # 60 seconds
+        "AWS_S3_CONNECT_TIMEOUT": 60  # 60 seconds
     }
 
     s3_settings_suffix = ""

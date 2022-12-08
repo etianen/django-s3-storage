@@ -18,6 +18,7 @@ from boto3.s3.transfer import TransferConfig
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.contrib.staticfiles.storage import ManifestFilesMixin
+from django.core.checks import Tags, Warning, register
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import File
 from django.core.files.storage import Storage
@@ -73,6 +74,23 @@ Settings = type(force_str("Settings"), (), {})
 
 
 _UNCOMPRESSED_SIZE_META_KEY = "uncompressed_size"
+
+
+@register(Tags.security)
+def system_checks(app_configs, **kwargs):
+    errors = []
+    storage = S3Storage()
+    if storage.settings.AWS_S3_PUBLIC_URL and storage.settings.AWS_S3_BUCKET_AUTH:
+        errors.append(
+            Warning(
+                f"Using AWS_S3_BUCKET_AUTH{storage.s3_settings_suffix} "
+                f"with AWS_S3_PUBLIC_URL{storage.s3_settings_suffix}. "
+                "Private files on S3 may be inaccessible via the public URL. "
+                "See https://github.com/etianen/django-s3-storage/issues/114 ",
+                id="django_s3_storage.W001",
+            )
+        )
+    return errors
 
 
 class S3File(File):
@@ -183,14 +201,6 @@ class S3Storage(Storage):
         # Validate settings.
         if not self.settings.AWS_S3_BUCKET_NAME:
             raise ImproperlyConfigured(f"Setting AWS_S3_BUCKET_NAME{self.s3_settings_suffix} is required.")
-        if self.settings.AWS_S3_PUBLIC_URL and self.settings.AWS_S3_BUCKET_AUTH:
-            log.warning(
-                "Using AWS_S3_BUCKET_AUTH%s with AWS_S3_PUBLIC_URL%s. "
-                "Private files on S3 may be inaccessible via the public URL. "
-                "See https://github.com/etianen/django-s3-storage/issues/114 ",
-                self.s3_settings_suffix,
-                self.s3_settings_suffix,
-            )
         # Create a thread-local connection manager.
         self._connections = _Local(self)
         # Set transfer config for S3 operations

@@ -18,7 +18,7 @@ from boto3.s3.transfer import TransferConfig
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.contrib.staticfiles.storage import ManifestFilesMixin
-from django.core.checks import Tags, Warning, register
+from django.core import checks
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import File
 from django.core.files.storage import Storage
@@ -74,23 +74,6 @@ Settings = type(force_str("Settings"), (), {})
 
 
 _UNCOMPRESSED_SIZE_META_KEY = "uncompressed_size"
-
-
-@register(Tags.security)
-def system_checks(app_configs, **kwargs):
-    errors = []
-    storage = S3Storage()
-    if storage.settings.AWS_S3_PUBLIC_URL and storage.settings.AWS_S3_BUCKET_AUTH:
-        errors.append(
-            Warning(
-                f"Using AWS_S3_BUCKET_AUTH{storage.s3_settings_suffix} "
-                f"with AWS_S3_PUBLIC_URL{storage.s3_settings_suffix}. "
-                "Private files on S3 may be inaccessible via the public URL. "
-                "See https://github.com/etianen/django-s3-storage/issues/114 ",
-                id="django_s3_storage.W001",
-            )
-        )
-    return errors
 
 
 class S3File(File):
@@ -227,8 +210,24 @@ class S3Storage(Storage):
         self._setup()
         # Re-initialize the storage if an AWS setting changes.
         setting_changed.connect(self._setting_changed_received)
+        # Register system checks.
+        checks.register(self._system_checks, checks.Tags.security)
         # All done!
         super().__init__()
+
+    def _system_checks(self, app_configs, **kwargs):
+        errors = []
+        if self.settings.AWS_S3_PUBLIC_URL and self.settings.AWS_S3_BUCKET_AUTH:
+            errors.append(
+                checks.Warning(
+                    f"Using AWS_S3_BUCKET_AUTH{self.s3_settings_suffix} "
+                    f"with AWS_S3_PUBLIC_URL{self.s3_settings_suffix}. "
+                    "Private files on S3 may be inaccessible via the public URL. "
+                    "See https://github.com/etianen/django-s3-storage/issues/114 ",
+                    id="django_s3_storage.W001",
+                )
+            )
+        return errors
 
     def __reduce__(self):
         return unpickle_helper, (self.__class__, self._kwargs)

@@ -436,7 +436,7 @@ class S3Storage(Storage):
         except KeyError:
             return meta["ContentLength"]
 
-    def url(self, name, extra_params=None):
+    def url(self, name, extra_params=None, clientMethod="get_object"):
         # Use a public URL, if specified.
         if self.settings.AWS_S3_PUBLIC_URL:
             if extra_params:
@@ -449,7 +449,7 @@ class S3Storage(Storage):
         params = extra_params.copy() if extra_params else {}
         params.update(self._object_params(name))
         url = self.s3_connection.generate_presigned_url(
-            ClientMethod="get_object",
+            ClientMethod=clientMethod,
             Params=params,
             ExpiresIn=self.settings.AWS_S3_MAX_AGE_SECONDS,
         )

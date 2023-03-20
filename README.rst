@@ -216,6 +216,22 @@ Please note, however, that **custom URLs will not work with AWS_S3_PUBLIC_URL** 
 URL doesn't accept extra parameters, and it will raise ``ValueError``.
 
 
+Presigned URL
+-----------
+Pre-signed URLs allow temporary access to S3 objects without AWS credentials.
+Generate a URL with permissions and time limit, then provide it to the user for downloading or uploading the object.
+API server does not need to handle the I/O of transferring the file, which can be resource-intensive and slow down the server's response time.
+Instead, the user can directly interact with S3, improving performance and reducing the load on your API server.
+It's secure and flexible for temporary access to S3 objects.
+
+For download a existed file:
+.. code:: python
+    url = storage.url("foo/bar.pdf")
+
+For upload new file: 
+.. code:: python
+    url = storage.url("foo/bar.pdf", clientMethod="put_object")
+
 Management commands
 -------------------
 

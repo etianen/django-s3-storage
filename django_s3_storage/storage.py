@@ -6,7 +6,7 @@ import posixpath
 import shutil
 from contextlib import closing
 from datetime import timezone
-from functools import wraps
+from functools import wraps, partial
 from io import TextIOBase
 from tempfile import SpooledTemporaryFile
 from threading import local
@@ -18,6 +18,7 @@ from boto3.s3.transfer import TransferConfig
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.contrib.staticfiles.storage import ManifestFilesMixin
+from django.core import checks
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import File
 from django.core.files.storage import Storage
@@ -183,14 +184,6 @@ class S3Storage(Storage):
         # Validate settings.
         if not self.settings.AWS_S3_BUCKET_NAME:
             raise ImproperlyConfigured(f"Setting AWS_S3_BUCKET_NAME{self.s3_settings_suffix} is required.")
-        if self.settings.AWS_S3_PUBLIC_URL and self.settings.AWS_S3_BUCKET_AUTH:
-            log.warning(
-                "Using AWS_S3_BUCKET_AUTH%s with AWS_S3_PUBLIC_URL%s. "
-                "Private files on S3 may be inaccessible via the public URL. "
-                "See https://github.com/etianen/django-s3-storage/issues/114 ",
-                self.s3_settings_suffix,
-                self.s3_settings_suffix,
-            )
         # Create a thread-local connection manager.
         self._connections = _Local(self)
         # Set transfer config for S3 operations
@@ -217,8 +210,24 @@ class S3Storage(Storage):
         self._setup()
         # Re-initialize the storage if an AWS setting changes.
         setting_changed.connect(self._setting_changed_received)
+        # Register system checks.
+        checks.register(partial(self.__class__._system_checks, self), checks.Tags.security)
         # All done!
         super().__init__()
+
+    def _system_checks(self, app_configs, **kwargs):
+        errors = []
+        if self.settings.AWS_S3_PUBLIC_URL and self.settings.AWS_S3_BUCKET_AUTH:
+            errors.append(
+                checks.Warning(
+                    f"Using AWS_S3_BUCKET_AUTH{self.s3_settings_suffix} "
+                    f"with AWS_S3_PUBLIC_URL{self.s3_settings_suffix}. "
+                    "Private files on S3 may be inaccessible via the public URL. "
+                    "See https://github.com/etianen/django-s3-storage/issues/114 ",
+                    id="django_s3_storage.W001",
+                )
+            )
+        return errors
 
     def __reduce__(self):
         return unpickle_helper, (self.__class__, self._kwargs)
@@ -436,25 +445,24 @@ class S3Storage(Storage):
         except KeyError:
             return meta["ContentLength"]
 
-    def url(self, name, extra_params=None, clientMethod="get_object"):
+    def url(self, name, extra_params=None, client_method="get_object"):
         # Use a public URL, if specified.
         if self.settings.AWS_S3_PUBLIC_URL:
-            if extra_params:
-                raise ValueError(
-                    "Use of extra_params to generate custom URLs is not allowed "
-                    "with AWS_S3_PUBLIC_URL"
-                )
+            if extra_params or client_method != "get_object":
+                raise ValueError("Use of extra_params or client_method is not allowed with AWS_S3_PUBLIC_URL")
             return urljoin(self.settings.AWS_S3_PUBLIC_URL, filepath_to_uri(name))
         # Otherwise, generate the URL.
         params = extra_params.copy() if extra_params else {}
         params.update(self._object_params(name))
         url = self.s3_connection.generate_presigned_url(
-            ClientMethod=clientMethod,
+            ClientMethod=client_method,
             Params=params,
             ExpiresIn=self.settings.AWS_S3_MAX_AGE_SECONDS,
         )
         # Strip off the query params if we're not interested in bucket auth.
         if not self.settings.AWS_S3_BUCKET_AUTH:
+            if extra_params or client_method != "get_object":
+                raise ValueError("Use of extra_params or client_method is not allowed with AWS_S3_BUCKET_AUTH")
             url = urlunsplit(urlsplit(url)[:3] + ("", "",))
         # All done!
         return url

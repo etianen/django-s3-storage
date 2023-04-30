@@ -238,7 +238,7 @@ class TestS3Storage(SimpleTestCase):
                 self.assertEqual(meta.get("ContentLanguage"), None)
                 self.assertNotIn("uncompressed_size", meta["Metadata"])
                 self.assertEqual(meta.get("StorageClass"), None)
-                self.assertEqual(meta.get("ServerSideEncryption"), None)
+                self.assertEqual(meta.get("ServerSideEncryption"), "AES256")
                 # Store new metadata.
                 with self.settings(
                     AWS_S3_BUCKET_AUTH=False,
@@ -283,7 +283,7 @@ class TestS3Storage(SimpleTestCase):
                 self.assertEqual(meta.get("ContentLanguage"), None)
                 self.assertEqual(meta["Metadata"], {"uncompressed_size": str(len(content))})
                 self.assertEqual(meta.get("StorageClass"), None)
-                self.assertEqual(meta.get("ServerSideEncryption"), None)
+                self.assertEqual(meta.get("ServerSideEncryption"), "AES256")
                 # Store new metadata.
                 with self.settings(
                     AWS_S3_BUCKET_AUTH=False,

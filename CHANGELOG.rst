@@ -1,6 +1,12 @@
 django-s3-storage changelog
 ===========================
 
+0.14.0
+------
+
+- Added ``client_method`` to ``save()`` method, allowing the generation of presigned URLs for direct S3 upload (@Roriz).
+
+
 0.13.11
 -------
 

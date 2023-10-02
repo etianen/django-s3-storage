@@ -41,6 +41,7 @@ def _wrap_errors(func):
             if code == "NoSuchKey":
                 err_cls = FileNotFoundError
             raise err_cls(f"S3Storage error at {name!r}: {force_str(ex)}")
+
     return _do_wrap_errors
 
 
@@ -63,6 +64,7 @@ def _wrap_path_impl(func):
         # posix paths. We fix this by converting paths to system form, passing them to the default implementation, then
         # converting them back to posix paths.
         return _to_posix_path(func(self, _to_sys_path(name), *args, **kwargs))
+
     return do_wrap_path_impl
 
 
@@ -114,12 +116,16 @@ class _Local(local):
         if storage.settings.AWS_S3_ENDPOINT_URL:
             connection_kwargs["endpoint_url"] = storage.settings.AWS_S3_ENDPOINT_URL
         self.session = boto3.session.Session()
-        self.s3_connection = self.session.client("s3", config=Config(
-            s3={"addressing_style": storage.settings.AWS_S3_ADDRESSING_STYLE},
-            signature_version=storage.settings.AWS_S3_SIGNATURE_VERSION,
-            max_pool_connections=storage.settings.AWS_S3_MAX_POOL_CONNECTIONS,
-            connect_timeout=storage.settings.AWS_S3_CONNECT_TIMEOUT
-        ), **connection_kwargs)
+        self.s3_connection = self.session.client(
+            "s3",
+            config=Config(
+                s3={"addressing_style": storage.settings.AWS_S3_ADDRESSING_STYLE},
+                signature_version=storage.settings.AWS_S3_SIGNATURE_VERSION,
+                max_pool_connections=storage.settings.AWS_S3_MAX_POOL_CONNECTIONS,
+                connect_timeout=storage.settings.AWS_S3_CONNECT_TIMEOUT,
+            ),
+            **connection_kwargs,
+        )
 
 
 @deconstructible
@@ -155,7 +161,7 @@ class S3Storage(Storage):
         "AWS_S3_FILE_OVERWRITE": False,
         "AWS_S3_USE_THREADS": True,
         "AWS_S3_MAX_POOL_CONNECTIONS": 10,
-        "AWS_S3_CONNECT_TIMEOUT": 60  # 60 seconds
+        "AWS_S3_CONNECT_TIMEOUT": 60,  # 60 seconds
     }
 
     s3_settings_suffix = ""
@@ -183,7 +189,9 @@ class S3Storage(Storage):
             )
         # Validate settings.
         if not self.settings.AWS_S3_BUCKET_NAME:
-            raise ImproperlyConfigured(f"Setting AWS_S3_BUCKET_NAME{self.s3_settings_suffix} is required.")
+            raise ImproperlyConfigured(
+                f"Setting AWS_S3_BUCKET_NAME{self.s3_settings_suffix} is required."
+            )
         # Create a thread-local connection manager.
         self._connections = _Local(self)
         # Set transfer config for S3 operations
@@ -201,8 +209,8 @@ class S3Storage(Storage):
         # Check for unknown kwargs.
         for kwarg_key in kwargs.keys():
             if (
-                kwarg_key.upper() not in self.default_auth_settings and
-                kwarg_key.upper() not in self.default_s3_settings
+                kwarg_key.upper() not in self.default_auth_settings
+                and kwarg_key.upper() not in self.default_s3_settings
             ):
                 raise ImproperlyConfigured(f"Unknown S3Storage parameter: {kwarg_key}")
         # Set up the storage.
@@ -237,7 +245,9 @@ class S3Storage(Storage):
     def _get_key_name(self, name):
         if name.startswith("/"):
             name = name[1:]
-        return posixpath.normpath(posixpath.join(self.settings.AWS_S3_KEY_PREFIX, _to_posix_path(name)))
+        return posixpath.normpath(
+            posixpath.join(self.settings.AWS_S3_KEY_PREFIX, _to_posix_path(name))
+        )
 
     def _object_params(self, name):
         params = {
@@ -256,10 +266,11 @@ class S3Storage(Storage):
             ),
             "Metadata": {
                 key: _callable_setting(value, name)
-                for key, value
-                in self.settings.AWS_S3_METADATA.items()
+                for key, value in self.settings.AWS_S3_METADATA.items()
             },
-            "StorageClass": "REDUCED_REDUNDANCY" if self.settings.AWS_S3_REDUCED_REDUNDANCY else "STANDARD",
+            "StorageClass": "REDUCED_REDUNDANCY"
+            if self.settings.AWS_S3_REDUCED_REDUNDANCY
+            else "STANDARD",
         }
         params.update(self._object_params(name))
         # Set content disposition.
@@ -283,7 +294,7 @@ class S3Storage(Storage):
 
     def new_temporary_file(self):
         """Returns a new file to use when opening from or saving to S3"""
-        return SpooledTemporaryFile(max_size=1024*1024*10)  # 10 MB.
+        return SpooledTemporaryFile(max_size=1024 * 1024 * 10)  # 10 MB.
 
     @_wrap_errors
     def _open(self, name, mode="rb"):
@@ -325,7 +336,12 @@ class S3Storage(Storage):
             # Check if the content type is compressible.
             content_type_family, content_type_subtype = content_type.lower().split("/")
             content_type_subtype = content_type_subtype.split("+")[-1]
-            if content_type_family == "text" or content_type_subtype in ("xml", "json", "html", "javascript"):
+            if content_type_family == "text" or content_type_subtype in (
+                "xml",
+                "json",
+                "html",
+                "javascript",
+            ):
                 # Compress the content.
                 temp_file = self.new_temporary_file()
                 temp_files.append(temp_file)
@@ -346,8 +362,13 @@ class S3Storage(Storage):
         original_close = content.close
         content.close = lambda: None
         try:
-            self.s3_connection.upload_fileobj(content, put_params.pop('Bucket'), put_params.pop('Key'),
-                                              ExtraArgs=put_params, Config=self._transfer_config)
+            self.s3_connection.upload_fileobj(
+                content,
+                put_params.pop('Bucket'),
+                put_params.pop('Key'),
+                ExtraArgs=put_params,
+                Config=self._transfer_config,
+            )
         finally:
             # Restore the original close method.
             content.close = original_close
@@ -385,8 +406,8 @@ class S3Storage(Storage):
     @_wrap_errors
     def copy(self, src_name, dst_name):
         self.s3_connection.copy_object(
-            CopySource=self._object_params(src_name),
-            **self._object_params(dst_name))
+            CopySource=self._object_params(src_name), **self._object_params(dst_name)
+        )
 
     @_wrap_errors
     def rename(self, src_name, dst_name):
@@ -402,7 +423,8 @@ class S3Storage(Storage):
                 results = self.s3_connection.list_objects_v2(
                     Bucket=self.settings.AWS_S3_BUCKET_NAME,
                     MaxKeys=1,
-                    Prefix=self._get_key_name(name) + "/",  # Add the slash again, since _get_key_name removes it.
+                    Prefix=self._get_key_name(name)
+                    + "/",  # Add the slash again, since _get_key_name removes it.
                 )
             except ClientError:
                 return False
@@ -449,7 +471,9 @@ class S3Storage(Storage):
         # Use a public URL, if specified.
         if self.settings.AWS_S3_PUBLIC_URL:
             if extra_params or client_method != "get_object":
-                raise ValueError("Use of extra_params or client_method is not allowed with AWS_S3_PUBLIC_URL")
+                raise ValueError(
+                    "Use of extra_params or client_method is not allowed with AWS_S3_PUBLIC_URL"
+                )
             return urljoin(self.settings.AWS_S3_PUBLIC_URL, filepath_to_uri(name))
         # Otherwise, generate the URL.
         params = extra_params.copy() if extra_params else {}
@@ -462,8 +486,16 @@ class S3Storage(Storage):
         # Strip off the query params if we're not interested in bucket auth.
         if not self.settings.AWS_S3_BUCKET_AUTH:
             if extra_params or client_method != "get_object":
-                raise ValueError("Use of extra_params or client_method is not allowed with AWS_S3_BUCKET_AUTH")
-            url = urlunsplit(urlsplit(url)[:3] + ("", "",))
+                raise ValueError(
+                    "Use of extra_params or client_method is not allowed with AWS_S3_BUCKET_AUTH"
+                )
+            url = urlunsplit(
+                urlsplit(url)[:3]
+                + (
+                    "",
+                    "",
+                )
+            )
         # All done!
         return url
 
@@ -501,8 +533,9 @@ class S3Storage(Storage):
                     put_params["ContentEncoding"] = content_encoding
                     if content_encoding == "gzip":
                         try:
-                            put_params["Metadata"][_UNCOMPRESSED_SIZE_META_KEY] = \
-                                obj["Metadata"][_UNCOMPRESSED_SIZE_META_KEY]
+                            put_params["Metadata"][_UNCOMPRESSED_SIZE_META_KEY] = obj["Metadata"][
+                                _UNCOMPRESSED_SIZE_META_KEY
+                            ]
                         except KeyError:
                             pass
                 # Update the metadata.
@@ -513,7 +546,7 @@ class S3Storage(Storage):
                         "Key": self._get_key_name(name),
                     },
                     MetadataDirective="REPLACE",
-                    **put_params
+                    **put_params,
                 )
                 yield name
 
@@ -529,19 +562,22 @@ class StaticS3Storage(S3Storage):
     """
 
     default_s3_settings = S3Storage.default_s3_settings.copy()
-    default_s3_settings.update({
-        "AWS_S3_BUCKET_AUTH": False,
-    })
+    default_s3_settings.update(
+        {
+            "AWS_S3_BUCKET_AUTH": False,
+        }
+    )
 
     s3_settings_suffix = "_STATIC"
 
 
 class ManifestStaticS3Storage(ManifestFilesMixin, StaticS3Storage):
-
     default_s3_settings = StaticS3Storage.default_s3_settings.copy()
-    default_s3_settings.update({
-        "AWS_S3_MAX_AGE_SECONDS_CACHED": 60 * 60 * 24 * 365,  # 1 year.
-    })
+    default_s3_settings.update(
+        {
+            "AWS_S3_MAX_AGE_SECONDS_CACHED": 60 * 60 * 24 * 365,  # 1 year.
+        }
+    )
 
     def post_process(self, *args, **kwargs):
         initial_aws_s3_max_age_seconds = self.settings.AWS_S3_MAX_AGE_SECONDS

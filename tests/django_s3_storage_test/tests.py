@@ -19,7 +19,6 @@ from django_s3_storage.storage import S3Storage, StaticS3Storage
 
 
 class TestS3Storage(SimpleTestCase):
-
     def tearDown(self):
         # clean up the dir
         for entry in default_storage.listdir(""):
@@ -50,12 +49,17 @@ class TestS3Storage(SimpleTestCase):
 
     def testSettingsOverwrittenByKwargs(self):
         self.assertEqual(S3Storage().settings.AWS_S3_CONTENT_LANGUAGE, "")
-        self.assertEqual(S3Storage(aws_s3_content_language="foo").settings.AWS_S3_CONTENT_LANGUAGE, "foo")
+        self.assertEqual(
+            S3Storage(aws_s3_content_language="foo").settings.AWS_S3_CONTENT_LANGUAGE, "foo"
+        )
 
     def testSettingsUnknown(self):
-        self.assertRaises(ImproperlyConfigured, lambda: S3Storage(
-            foo=True,
-        ))
+        self.assertRaises(
+            ImproperlyConfigured,
+            lambda: S3Storage(
+                foo=True,
+            ),
+        )
 
     # Storage tests.
 
@@ -120,14 +124,22 @@ class TestS3Storage(SimpleTestCase):
             self.assertEqual(response.content, b"foo")
             self.assertEqual(response.headers["cache-control"], "private,max-age=3600")
             # With the query string removed, the URL should not be accessible.
-            url_unauthenticated = urlunsplit(urlsplit(url)[:3] + ("", "",))
+            url_unauthenticated = urlunsplit(
+                urlsplit(url)[:3]
+                + (
+                    "",
+                    "",
+                )
+            )
             response_unauthenticated = requests.get(url_unauthenticated)
             self.assertEqual(response_unauthenticated.status_code, 403)
 
     def testCustomUrlContentDisposition(self):
         name = "foo/bar.txt"
         with self.save_file(name=name, content="foo" * 4096):
-            url = default_storage.url(name, extra_params={"ResponseContentDisposition": "attachment"})
+            url = default_storage.url(
+                name, extra_params={"ResponseContentDisposition": "attachment"}
+            )
             self.assertIn("response-content-disposition=attachment", url)
             rsp = requests.get(url)
             self.assertEqual(rsp.status_code, 200)
@@ -142,7 +154,8 @@ class TestS3Storage(SimpleTestCase):
                     ValueError,
                     default_storage.url,
                     name,
-                    extra_params={"ResponseContentDisposition": "attachment"})
+                    extra_params={"ResponseContentDisposition": "attachment"},
+                )
 
     def testExists(self):
         self.assertFalse(default_storage.exists("foo.txt"))
@@ -188,7 +201,9 @@ class TestS3Storage(SimpleTestCase):
         with self.save_file():
             modified_time = default_storage.modified_time("foo.txt")
             # Check that the timestamps are roughly equals.
-            self.assertLess(abs(modified_time - make_naive(timezone.now(), utc)), timedelta(seconds=10))
+            self.assertLess(
+                abs(modified_time - make_naive(timezone.now(), utc)), timedelta(seconds=10)
+            )
             # All other timestamps are slaved to modified time.
             self.assertEqual(default_storage.accessed_time("foo.txt"), modified_time)
             self.assertEqual(default_storage.created_time("foo.txt"), modified_time)
@@ -199,9 +214,7 @@ class TestS3Storage(SimpleTestCase):
             modified_time = default_storage.get_modified_time("foo.txt")
             self.assertTrue(is_naive(modified_time))
             # Check that the timestamps are roughly equals in the correct timezone
-            self.assertLess(
-                abs(modified_time - timezone.now()),
-                timedelta(seconds=10))
+            self.assertLess(abs(modified_time - timezone.now()), timedelta(seconds=10))
             # All other timestamps are slaved to modified time.
             self.assertEqual(default_storage.get_accessed_time("foo.txt"), modified_time)
             self.assertEqual(default_storage.get_created_time("foo.txt"), modified_time)
@@ -210,9 +223,7 @@ class TestS3Storage(SimpleTestCase):
             modified_time = default_storage.get_modified_time("foo.txt")
             self.assertFalse(is_naive(modified_time))
             # Check that the timestamps are roughly equals
-            self.assertLess(
-                abs(modified_time - timezone.now()),
-                timedelta(seconds=10))
+            self.assertLess(abs(modified_time - timezone.now()), timedelta(seconds=10))
             # All other timestamps are slaved to modified time.
             self.assertEqual(default_storage.get_accessed_time("foo.txt"), modified_time)
             self.assertEqual(default_storage.get_created_time("foo.txt"), modified_time)
@@ -259,14 +270,23 @@ class TestS3Storage(SimpleTestCase):
                 self.assertEqual(meta["ContentType"], "text/plain")
                 self.assertEqual(meta.get("ContentDisposition"), "attachment; filename=foo/bar.txt")
                 self.assertEqual(meta.get("ContentLanguage"), "eo")
-                self.assertEqual(meta.get("Metadata"), {
-                    "foo": "bar",
-                    "baz": "foo/bar.txt",
-                })
+                self.assertEqual(
+                    meta.get("Metadata"),
+                    {
+                        "foo": "bar",
+                        "baz": "foo/bar.txt",
+                    },
+                )
                 self.assertEqual(meta["StorageClass"], "REDUCED_REDUNDANCY")
                 self.assertEqual(meta["ServerSideEncryption"], "AES256")
                 # Check ACL changed by removing the query string.
-                url_unauthenticated = urlunsplit(urlsplit(default_storage.url("foo/bar.txt"))[:3] + ("", "",))
+                url_unauthenticated = urlunsplit(
+                    urlsplit(default_storage.url("foo/bar.txt"))[:3]
+                    + (
+                        "",
+                        "",
+                    )
+                )
                 response = requests.get(url_unauthenticated)
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.content, b"foo" * 1000)
@@ -305,15 +325,24 @@ class TestS3Storage(SimpleTestCase):
                 self.assertEqual(meta["ContentEncoding"], "gzip")
                 self.assertEqual(meta.get("ContentDisposition"), "attachment; filename=foo/bar.txt")
                 self.assertEqual(meta.get("ContentLanguage"), "eo")
-                self.assertEqual(meta.get("Metadata"), {
-                    "foo": "bar",
-                    "baz": "foo/bar.txt",
-                    "uncompressed_size": str(len(content)),
-                })
+                self.assertEqual(
+                    meta.get("Metadata"),
+                    {
+                        "foo": "bar",
+                        "baz": "foo/bar.txt",
+                        "uncompressed_size": str(len(content)),
+                    },
+                )
                 self.assertEqual(meta["StorageClass"], "REDUCED_REDUNDANCY")
                 self.assertEqual(meta["ServerSideEncryption"], "AES256")
                 # Check ACL changed by removing the query string.
-                url_unauthenticated = urlunsplit(urlsplit(default_storage.url("foo/bar.txt"))[:3] + ("", "",))
+                url_unauthenticated = urlunsplit(
+                    urlsplit(default_storage.url("foo/bar.txt"))[:3]
+                    + (
+                        "",
+                        "",
+                    )
+                )
                 response = requests.get(url_unauthenticated)
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.content, b"foo" * 1000)
@@ -323,7 +352,9 @@ class TestS3Storage(SimpleTestCase):
             self.assertEqual(default_storage.url("bar.txt"), "/foo/bar.txt")
 
     def testEndpointUrl(self):
-        with self.settings(AWS_S3_ENDPOINT_URL="https://s3.amazonaws.com"), self.save_file() as name:
+        with self.settings(
+            AWS_S3_ENDPOINT_URL="https://s3.amazonaws.com"
+        ), self.save_file() as name:
             self.assertEqual(name, "foo.txt")
             self.assertEqual(default_storage.open(name).read(), b"foo")
 
@@ -349,13 +380,17 @@ class TestS3Storage(SimpleTestCase):
         with self.save_file():
             # Store new metadata.
             with self.settings(AWS_S3_MAX_AGE_SECONDS=9999):
-                call_command("s3_sync_meta", "django.core.files.storage.default_storage", stdout=StringIO())
+                call_command(
+                    "s3_sync_meta", "django.core.files.storage.default_storage", stdout=StringIO()
+                )
             # Check metadata changed.
             meta = default_storage.meta("foo.txt")
             self.assertEqual(meta["CacheControl"], "private,max-age=9999")
 
     def testManagementS3SyncMetaUnknownStorage(self):
-        self.assertRaises(CommandError, lambda: call_command("s3_sync_meta", "foo.bar", stdout=StringIO()))
+        self.assertRaises(
+            CommandError, lambda: call_command("s3_sync_meta", "foo.bar", stdout=StringIO())
+        )
 
     def testManagementCollectstatic(self):
         call_command("collectstatic", interactive=False, stdout=StringIO())

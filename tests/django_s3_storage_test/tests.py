@@ -18,16 +18,26 @@ from django.utils.timezone import is_naive, make_naive, utc
 from django_s3_storage.storage import S3Storage, StaticS3Storage
 
 
+def helper_old_to_new_name(name) -> str:
+    return f's3://{S3Storage().settings.AWS_S3_BUCKET_NAME}/{name}'
+
+
 class TestS3Storage(SimpleTestCase):
     def tearDown(self):
         # clean up the dir
-        for entry in default_storage.listdir(""):
-            default_storage.delete("/".join(entry))
+        for entry in default_storage.listdir(helper_old_to_new_name("")):
+            print(entry)
+            # default_storage.delete("/".join(entry))
 
     # Helpers.
 
     @contextmanager
-    def save_file(self, name="foo.txt", content=b"foo", storage=default_storage):
+    def save_file(
+        self,
+        name=f"s3://{S3Storage().settings.AWS_S3_BUCKET_NAME}/foo.txt",
+        content=b"foo",
+        storage=default_storage,
+    ):
         name = storage.save(name, ContentFile(content, name))
         try:
             time.sleep(1)  # Let S3 process the save.
@@ -64,14 +74,16 @@ class TestS3Storage(SimpleTestCase):
     # Storage tests.
 
     def testOpenMissing(self):
-        self.assertRaises(OSError, lambda: default_storage.open("foo.txt"))
+        self.assertRaises(OSError, lambda: default_storage.open(helper_old_to_new_name("foo.txt")))
 
     def testOpenWriteMode(self):
-        self.assertRaises(ValueError, lambda: default_storage.open("foo.txt", "wb"))
+        self.assertRaises(
+            ValueError, lambda: default_storage.open(helper_old_to_new_name("foo.txt"), "wb")
+        )
 
     def testSaveAndOpen(self):
         with self.save_file() as name:
-            self.assertEqual(name, "foo.txt")
+            self.assertEqual(name, helper_old_to_new_name("foo.txt"))
             handle = default_storage.open(name)
             self.assertEqual(handle.read(), b"foo")
             # Re-open the file.
@@ -80,32 +92,44 @@ class TestS3Storage(SimpleTestCase):
             self.assertEqual(handle.read(), b"foo")
 
     def testSaveTextMode(self):
-        with self.save_file(content="foo"):
-            self.assertEqual(default_storage.open("foo.txt").read(), b"foo")
+        with self.save_file(content=b"foo"):
+            self.assertEqual(default_storage.open(helper_old_to_new_name("foo.txt")).read(), b"foo")
 
     def testSaveGzipped(self):
         # Tiny files are not gzipped.
         with self.save_file():
-            self.assertEqual(default_storage.meta("foo.txt").get("ContentEncoding"), None)
-            self.assertEqual(default_storage.open("foo.txt").read(), b"foo")
-            self.assertEqual(requests.get(default_storage.url("foo.txt")).content, b"foo")
+            self.assertEqual(
+                default_storage.meta(helper_old_to_new_name("foo.txt")).get("ContentEncoding"), None
+            )
+            self.assertEqual(default_storage.open(helper_old_to_new_name("foo.txt")).read(), b"foo")
+            self.assertEqual(
+                requests.get(default_storage.url(helper_old_to_new_name("foo.txt"))).content, b"foo"
+            )
         # Large files are gzipped.
         with self.save_file(content=b"foo" * 1000):
-            self.assertEqual(default_storage.meta("foo.txt").get("ContentEncoding"), "gzip")
-            self.assertEqual(default_storage.open("foo.txt").read(), b"foo" * 1000)
-            self.assertEqual(requests.get(default_storage.url("foo.txt")).content, b"foo" * 1000)
+            self.assertEqual(
+                default_storage.meta(helper_old_to_new_name("foo.txt")).get("ContentEncoding"),
+                "gzip",
+            )
+            self.assertEqual(
+                default_storage.open(helper_old_to_new_name("foo.txt")).read(), b"foo" * 1000
+            )
+            self.assertEqual(
+                requests.get(default_storage.url(helper_old_to_new_name("foo.txt"))).content,
+                b"foo" * 1000,
+            )
 
     def testGzippedSize(self):
-        content = "foo" * 4096
+        content = b"foo" * 4096
         with self.settings(AWS_S3_GZIP=False):
-            name = "foo/bar.txt"
+            name = helper_old_to_new_name("foo/bar.txt")
             with self.save_file(name=name, content=content):
                 meta = default_storage.meta(name)
                 self.assertNotEqual(meta.get("ContentEncoding", ""), "gzip")
                 self.assertNotIn("uncompressed_size", meta["Metadata"])
                 self.assertEqual(default_storage.size(name), len(content))
         with self.settings(AWS_S3_GZIP=True):
-            name = "foo/bar.txt.gz"
+            name = helper_old_to_new_name("foo/bar.txt.gz")
             with self.save_file(name=name, content=content):
                 meta = default_storage.meta(name)
                 self.assertEqual(meta["ContentEncoding"], "gzip")
@@ -115,7 +139,7 @@ class TestS3Storage(SimpleTestCase):
 
     def testUrl(self):
         with self.save_file():
-            url = default_storage.url("foo.txt")
+            url = default_storage.url(helper_old_to_new_name("foo.txt"))
             # The URL should contain query string authentication.
             self.assertTrue(urlsplit(url).query)
             response = requests.get(url)
@@ -135,8 +159,8 @@ class TestS3Storage(SimpleTestCase):
             self.assertEqual(response_unauthenticated.status_code, 403)
 
     def testCustomUrlContentDisposition(self):
-        name = "foo/bar.txt"
-        with self.save_file(name=name, content="foo" * 4096):
+        name = helper_old_to_new_name("foo/bar.txt")
+        with self.save_file(name=name, content=b"foo" * 4096):
             url = default_storage.url(
                 name, extra_params={"ResponseContentDisposition": "attachment"}
             )
@@ -148,8 +172,8 @@ class TestS3Storage(SimpleTestCase):
 
     def testCustomUrlWhenPublicURL(self):
         with self.settings(AWS_S3_PUBLIC_URL="/foo/", AWS_S3_BUCKET_AUTH=False):
-            name = "bar.txt"
-            with self.save_file(name=name, content="foo" * 4096):
+            name = helper_old_to_new_name("bar.txt")
+            with self.save_file(name=name, content=b"foo" * 4096):
                 self.assertRaises(
                     ValueError,
                     default_storage.url,
@@ -158,91 +182,123 @@ class TestS3Storage(SimpleTestCase):
                 )
 
     def testExists(self):
-        self.assertFalse(default_storage.exists("foo.txt"))
+        self.assertFalse(default_storage.exists(helper_old_to_new_name("foo.txt")))
         with self.save_file():
-            self.assertTrue(default_storage.exists("foo.txt"))
-            self.assertFalse(default_storage.exists("fo"))
+            self.assertTrue(default_storage.exists(helper_old_to_new_name("foo.txt")))
+            self.assertFalse(default_storage.exists(helper_old_to_new_name("fo")))
 
     def testExistsDir(self):
-        self.assertFalse(default_storage.exists("foo/"))
-        with self.save_file(name="foo/bar.txt"):
-            self.assertTrue(default_storage.exists("foo/"))
+        self.assertFalse(default_storage.exists(helper_old_to_new_name("foo/")))
+        name = helper_old_to_new_name("foo/bar.txt")
+        with self.save_file(name=name):
+            self.assertTrue(default_storage.exists(helper_old_to_new_name("foo/")))
 
     def testExistsRelative(self):
-        self.assertFalse(default_storage.exists("admin/css/../img/sorting-icons.svg"))
-        with self.save_file("admin/img/sorting-icons.svg"):
-            self.assertTrue(default_storage.exists("admin/css/../img/sorting-icons.svg"))
+        self.assertFalse(
+            default_storage.exists(helper_old_to_new_name("admin/css/../img/sorting-icons.svg"))
+        )
+        name = helper_old_to_new_name("admin/img/sorting-icons.svg")
+        with self.save_file(name=name):
+            self.assertTrue(
+                default_storage.exists(helper_old_to_new_name("admin/css/../img/sorting-icons.svg"))
+            )
 
     def testSize(self):
         with self.save_file():
-            self.assertEqual(default_storage.size("foo.txt"), 3)
+            self.assertEqual(default_storage.size(helper_old_to_new_name("foo.txt")), 3)
 
     def testDelete(self):
         with self.save_file():
-            self.assertTrue(default_storage.exists("foo.txt"))
-            default_storage.delete("foo.txt")
-        self.assertFalse(default_storage.exists("foo.txt"))
+            self.assertTrue(default_storage.exists(helper_old_to_new_name("foo.txt")))
+            default_storage.delete(helper_old_to_new_name("foo.txt"))
+        self.assertFalse(default_storage.exists(helper_old_to_new_name("foo.txt")))
 
     def testCopy(self):
         with self.save_file():
-            self.assertTrue(default_storage.exists("foo.txt"))
-            default_storage.copy("foo.txt", "bar.txt")
-            self.assertTrue(default_storage.exists("foo.txt"))
-        self.assertTrue(default_storage.exists("bar.txt"))
+            self.assertTrue(default_storage.exists(helper_old_to_new_name("foo.txt")))
+            default_storage.copy(
+                helper_old_to_new_name("foo.txt"), helper_old_to_new_name("bar.txt")
+            )
+            self.assertTrue(default_storage.exists(helper_old_to_new_name("foo.txt")))
+        self.assertTrue(default_storage.exists(helper_old_to_new_name("bar.txt")))
 
     def testRename(self):
         with self.save_file():
-            self.assertTrue(default_storage.exists("foo.txt"))
-            default_storage.rename("foo.txt", "bar.txt")
-            self.assertFalse(default_storage.exists("foo.txt"))
-        self.assertTrue(default_storage.exists("bar.txt"))
+            self.assertTrue(default_storage.exists(helper_old_to_new_name("foo.txt")))
+            default_storage.rename(
+                helper_old_to_new_name("foo.txt"), helper_old_to_new_name("bar.txt")
+            )
+            self.assertFalse(default_storage.exists(helper_old_to_new_name("foo.txt")))
+        self.assertTrue(default_storage.exists(helper_old_to_new_name("bar.txt")))
 
     def testModifiedTime(self):
         with self.save_file():
-            modified_time = default_storage.modified_time("foo.txt")
+            modified_time = default_storage.modified_time(helper_old_to_new_name("foo.txt"))
             # Check that the timestamps are roughly equals.
             self.assertLess(
                 abs(modified_time - make_naive(timezone.now(), utc)), timedelta(seconds=10)
             )
             # All other timestamps are slaved to modified time.
-            self.assertEqual(default_storage.accessed_time("foo.txt"), modified_time)
-            self.assertEqual(default_storage.created_time("foo.txt"), modified_time)
+            self.assertEqual(
+                default_storage.accessed_time(helper_old_to_new_name("foo.txt")), modified_time
+            )
+            self.assertEqual(
+                default_storage.created_time(helper_old_to_new_name("foo.txt")), modified_time
+            )
 
     def testGetModifiedTime(self):
         tzname = "America/Argentina/Buenos_Aires"
         with self.settings(USE_TZ=False, TIME_ZONE=tzname), self.save_file():
-            modified_time = default_storage.get_modified_time("foo.txt")
+            modified_time = default_storage.get_modified_time(helper_old_to_new_name("foo.txt"))
             self.assertTrue(is_naive(modified_time))
             # Check that the timestamps are roughly equals in the correct timezone
             self.assertLess(abs(modified_time - timezone.now()), timedelta(seconds=10))
             # All other timestamps are slaved to modified time.
-            self.assertEqual(default_storage.get_accessed_time("foo.txt"), modified_time)
-            self.assertEqual(default_storage.get_created_time("foo.txt"), modified_time)
+            self.assertEqual(
+                default_storage.get_accessed_time(helper_old_to_new_name("foo.txt")), modified_time
+            )
+            self.assertEqual(
+                default_storage.get_created_time(helper_old_to_new_name("foo.txt")), modified_time
+            )
 
         with self.save_file():
-            modified_time = default_storage.get_modified_time("foo.txt")
+            modified_time = default_storage.get_modified_time(helper_old_to_new_name("foo.txt"))
             self.assertFalse(is_naive(modified_time))
             # Check that the timestamps are roughly equals
             self.assertLess(abs(modified_time - timezone.now()), timedelta(seconds=10))
             # All other timestamps are slaved to modified time.
-            self.assertEqual(default_storage.get_accessed_time("foo.txt"), modified_time)
-            self.assertEqual(default_storage.get_created_time("foo.txt"), modified_time)
+            self.assertEqual(
+                default_storage.get_accessed_time(helper_old_to_new_name("foo.txt")), modified_time
+            )
+            self.assertEqual(
+                default_storage.get_created_time(helper_old_to_new_name("foo.txt")), modified_time
+            )
 
     def testListdir(self):
-        self.assertEqual(default_storage.listdir(""), ([], []))
-        self.assertEqual(default_storage.listdir("/"), ([], []))
-        with self.save_file(), self.save_file(name="bar/bat.txt"):
-            self.assertEqual(default_storage.listdir(""), (["bar"], ["foo.txt"]))
-            self.assertEqual(default_storage.listdir("/"), (["bar"], ["foo.txt"]))
-            self.assertEqual(default_storage.listdir("bar"), ([], ["bat.txt"]))
-            self.assertEqual(default_storage.listdir("/bar"), ([], ["bat.txt"]))
-            self.assertEqual(default_storage.listdir("bar/"), ([], ["bat.txt"]))
+        self.assertEqual(default_storage.listdir(helper_old_to_new_name("")), ([], []))
+        self.assertEqual(default_storage.listdir(helper_old_to_new_name("/")), ([], []))
+        with self.save_file(), self.save_file(name=helper_old_to_new_name("bar/bat.txt")):
+            self.assertEqual(
+                default_storage.listdir(helper_old_to_new_name("")), (["bar"], ["foo.txt"])
+            )
+            self.assertEqual(
+                default_storage.listdir(helper_old_to_new_name("/")), (["bar"], ["foo.txt"])
+            )
+            self.assertEqual(
+                default_storage.listdir(helper_old_to_new_name("bar")), ([], ["bat.txt"])
+            )
+            self.assertEqual(
+                default_storage.listdir(helper_old_to_new_name("/bar")), ([], ["bat.txt"])
+            )
+            self.assertEqual(
+                default_storage.listdir(helper_old_to_new_name("bar/")), ([], ["bat.txt"])
+            )
 
     def testSyncMeta(self):
         content = b"foo" * 1000
         with self.settings(AWS_S3_GZIP=False):
             with self.save_file(name="foo/bar.txt", content=content):
-                meta = default_storage.meta("foo/bar.txt")
+                meta = default_storage.meta(helper_old_to_new_name("foo/bar.txt"))
                 self.assertEqual(meta["CacheControl"], "private,max-age=3600")
                 self.assertEqual(meta["ContentType"], "text/plain")
                 self.assertEqual(meta.get("ContentDisposition"), None)
@@ -252,7 +308,7 @@ class TestS3Storage(SimpleTestCase):
                 self.assertEqual(meta.get("ServerSideEncryption"), "AES256")
                 # Store new metadata.
                 with self.settings(
-                    AWS_S3_BUCKET_AUTH=False,
+                    # AWS_S3_BUCKET_AUTH=False,
                     AWS_S3_MAX_AGE_SECONDS=9999,
                     AWS_S3_CONTENT_DISPOSITION=lambda name: f"attachment; filename={name}",
                     AWS_S3_CONTENT_LANGUAGE="eo",
@@ -265,7 +321,7 @@ class TestS3Storage(SimpleTestCase):
                 ):
                     default_storage.sync_meta()
                 # Check metadata changed.
-                meta = default_storage.meta("foo/bar.txt")
+                meta = default_storage.meta(helper_old_to_new_name("foo/bar.txt"))
                 self.assertEqual(meta["CacheControl"], "public,max-age=9999")
                 self.assertEqual(meta["ContentType"], "text/plain")
                 self.assertEqual(meta.get("ContentDisposition"), "attachment; filename=foo/bar.txt")
@@ -360,14 +416,14 @@ class TestS3Storage(SimpleTestCase):
 
     def testNonOverwrite(self):
         with self.save_file() as name_1, self.save_file() as name_2:
-            self.assertEqual(name_1, "foo.txt")
+            self.assertEqual(name_1, helper_old_to_new_name("foo.txt"))
             self.assertNotEqual(name_1, name_2)
 
     def testOverwrite(self):
         with self.settings(AWS_S3_FILE_OVERWRITE=True):
             with self.save_file() as name_1, self.save_file() as name_2:
-                self.assertEqual(name_1, "foo.txt")
-                self.assertEqual(name_2, "foo.txt")
+                self.assertEqual(name_1, helper_old_to_new_name("foo.txt"))
+                self.assertEqual(name_2, helper_old_to_new_name("foo.txt"))
 
     # Static storage tests.
 

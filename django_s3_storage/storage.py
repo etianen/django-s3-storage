@@ -250,9 +250,11 @@ class S3Storage(Storage):
         )
 
     def _object_params(self, name):
+        url_split = urlsplit(name)
+        assert url_split.netloc and url_split.netloc != ''
         params = {
-            "Bucket": self.settings.AWS_S3_BUCKET_NAME,
-            "Key": self._get_key_name(name),
+            "Bucket": url_split.netloc,
+            "Key": self._get_key_name(url_split.path),
         }
         return params
 
@@ -392,7 +394,9 @@ class S3Storage(Storage):
 
     @_wrap_path_impl
     def generate_filename(self, filename):
-        return super().generate_filename(filename)
+        url_split = urlsplit(filename)
+        path = super().generate_filename(url_split.path)
+        return url_split._replace(path=path).geturl()
 
     @_wrap_errors
     def meta(self, name):
@@ -420,10 +424,11 @@ class S3Storage(Storage):
             # This looks like a directory, but on S3 directories are virtual, so we need to see if the key starts
             # with this prefix.
             try:
+                params = self._object_params(name)
                 results = self.s3_connection.list_objects_v2(
-                    Bucket=self.settings.AWS_S3_BUCKET_NAME,
+                    Bucket=params['Bucket'],
                     MaxKeys=1,
-                    Prefix=self._get_key_name(name)
+                    Prefix=params['Key']
                     + "/",  # Add the slash again, since _get_key_name removes it.
                 )
             except ClientError:
@@ -440,14 +445,15 @@ class S3Storage(Storage):
             return True
 
     def listdir(self, path):
-        path = self._get_key_name(path)
-        path = "" if path == "." else path + "/"
+        params = self._object_params(path)
+        key = params['Key']
+        path = "" if key == "." else key + "/"
         # Look through the paths, parsing out directories and paths.
         files = []
         dirs = []
         paginator = self.s3_connection.get_paginator("list_objects_v2")
         pages = paginator.paginate(
-            Bucket=self.settings.AWS_S3_BUCKET_NAME,
+            Bucket=params['Bucket'],
             Delimiter="/",
             Prefix=path,
         )

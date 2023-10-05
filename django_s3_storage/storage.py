@@ -30,6 +30,15 @@ from django.utils.timezone import make_naive
 log = logging.getLogger(__name__)
 
 
+from dataclasses import dataclass, field, fields
+
+
+@dataclass
+class Endpoints:
+    endpoint_url: str | None = None
+    endpoint_url_presigning: str | None = None
+
+
 def _wrap_errors(func):
     @wraps(func)
     def _do_wrap_errors(self, name, *args, **kwargs):
@@ -72,9 +81,6 @@ def unpickle_helper(cls, kwargs):
     return cls(**kwargs)
 
 
-Settings = type(force_str("Settings"), (), {})
-
-
 _UNCOMPRESSED_SIZE_META_KEY = "uncompressed_size"
 
 
@@ -94,38 +100,85 @@ class S3File(File):
         return super().open(mode)
 
 
-class _Local(local):
+@dataclass
+class Settings:
+    # default_auth_settings
+    AWS_REGION: str = "us-east-1"
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_SESSION_TOKEN: str = ""
+    # default_s3_settings
+    AWS_S3_BUCKET_NAME: str = ""
+    AWS_S3_ADDRESSING_STYLE: str = "auto"
+    # "AWS_S3_ENDPOINT_URL": "",
+    # "AWS_S3_ENDPOINTS": {
+    #     's3': Endpoints(),
+    #     's3-minio': Endpoints(
+    #         endpoint_url='http://minio:9000', endpoint_url_presigning='http://localhost:9000'
+    #     ),
+    # },
+    AWS_S3_KEY_PREFIX: str = ""
+    AWS_S3_BUCKET_AUTH: bool = True
+    AWS_S3_MAX_AGE_SECONDS: int = 60 * 60  # 1 hours.
+    AWS_S3_PUBLIC_URL: str = ""
+    AWS_S3_REDUCED_REDUNDANCY: bool = False
+    AWS_S3_CONTENT_DISPOSITION: str = ""
+    AWS_S3_CONTENT_LANGUAGE: str = ""
+    AWS_S3_METADATA: dict = field(default_factory=dict)
+    AWS_S3_ENCRYPT_KEY: bool = False
+    AWS_S3_KMS_ENCRYPTION_KEY_ID: str = ""
+    AWS_S3_GZIP: bool = True
+    AWS_S3_SIGNATURE_VERSION: str = "s3v4"
+    AWS_S3_FILE_OVERWRITE: bool = False
+    AWS_S3_USE_THREADS: bool = True
+    AWS_S3_MAX_POOL_CONNECTIONS: int = 10
+    AWS_S3_CONNECT_TIMEOUT: int = 60  # 60 seconds
 
-    """
-    Thread-local connection manager.
+    @classmethod
+    def from_kwargs_and_django_settings(cls, kwargs_settings, django_settings):
+        # The name of all settings as a set
+        settings_keys = {f.name for f in fields(cls)}
 
-    Boto3 objects are not thread-safe.
-    https://boto3.amazonaws.com/v1/documentation/api/latest/guide/resources.html#multithreading-and-multiprocessing
-    """
+        # From django settings, find the relevant settings by name and create a dictionary of the settings
+        django_settings_keys = set(dir(django_settings)).intersection(settings_keys)
+        d_settings = {ds: getattr(django_settings, ds) for ds in django_settings_keys}
 
-    def __init__(self, storage):
-        connection_kwargs = {
-            "region_name": storage.settings.AWS_REGION,
+        # Settings from kwargs, convert keys to uppercase.
+        k_settings = {
+            k.upper(): v for k, v in kwargs_settings.items() if k.upper() in settings_keys
         }
-        if storage.settings.AWS_ACCESS_KEY_ID:
-            connection_kwargs["aws_access_key_id"] = storage.settings.AWS_ACCESS_KEY_ID
-        if storage.settings.AWS_SECRET_ACCESS_KEY:
-            connection_kwargs["aws_secret_access_key"] = storage.settings.AWS_SECRET_ACCESS_KEY
-        if storage.settings.AWS_SESSION_TOKEN:
-            connection_kwargs["aws_session_token"] = storage.settings.AWS_SESSION_TOKEN
-        if storage.settings.AWS_S3_ENDPOINT_URL:
-            connection_kwargs["endpoint_url"] = storage.settings.AWS_S3_ENDPOINT_URL
-        self.session = boto3.session.Session()
-        self.s3_connection = self.session.client(
-            "s3",
-            config=Config(
-                s3={"addressing_style": storage.settings.AWS_S3_ADDRESSING_STYLE},
-                signature_version=storage.settings.AWS_S3_SIGNATURE_VERSION,
-                max_pool_connections=storage.settings.AWS_S3_MAX_POOL_CONNECTIONS,
-                connect_timeout=storage.settings.AWS_S3_CONNECT_TIMEOUT,
-            ),
-            **connection_kwargs,
+
+        # Combine settings from kwargs and Django. kwargs settings should have higher override Django settings.
+        merged_settings = d_settings | k_settings
+
+        return cls(**merged_settings)
+
+    def __post_init__(self):
+        # Validate settings.
+        if not self.AWS_S3_BUCKET_NAME:
+            raise ImproperlyConfigured(f"Setting AWS_S3_BUCKET_NAME is required.")
+
+    @property
+    def transfer_config(self):
+        return TransferConfig(use_threads=self.AWS_S3_USE_THREADS)
+
+    @property
+    def _client_config(self):
+        return Config(
+            s3={"addressing_style": self.AWS_S3_ADDRESSING_STYLE},
+            signature_version=self.AWS_S3_SIGNATURE_VERSION,
+            max_pool_connections=self.AWS_S3_MAX_POOL_CONNECTIONS,
+            connect_timeout=self.AWS_S3_CONNECT_TIMEOUT,
         )
+
+    def boto3_client_kwargs(self):
+        return {
+            'config': self._client_config,
+            'region_name': self.AWS_REGION,
+            'aws_access_key_id': self.AWS_ACCESS_KEY_ID or None,
+            'aws_secret_access_key': self.AWS_SECRET_ACCESS_KEY or None,
+            'aws_session_token': self.AWS_SESSION_TOKEN or None,
+        }
 
 
 @deconstructible
@@ -135,71 +188,16 @@ class S3Storage(Storage):
     An implementation of Django file storage over S3.
     """
 
-    default_auth_settings = {
-        "AWS_REGION": "us-east-1",
-        "AWS_ACCESS_KEY_ID": "",
-        "AWS_SECRET_ACCESS_KEY": "",
-        "AWS_SESSION_TOKEN": "",
-    }
-
-    default_s3_settings = {
-        "AWS_S3_BUCKET_NAME": "",
-        "AWS_S3_ADDRESSING_STYLE": "auto",
-        "AWS_S3_ENDPOINT_URL": "",
-        "AWS_S3_KEY_PREFIX": "",
-        "AWS_S3_BUCKET_AUTH": True,
-        "AWS_S3_MAX_AGE_SECONDS": 60 * 60,  # 1 hours.
-        "AWS_S3_PUBLIC_URL": "",
-        "AWS_S3_REDUCED_REDUNDANCY": False,
-        "AWS_S3_CONTENT_DISPOSITION": "",
-        "AWS_S3_CONTENT_LANGUAGE": "",
-        "AWS_S3_METADATA": {},
-        "AWS_S3_ENCRYPT_KEY": False,
-        "AWS_S3_KMS_ENCRYPTION_KEY_ID": "",
-        "AWS_S3_GZIP": True,
-        "AWS_S3_SIGNATURE_VERSION": "s3v4",
-        "AWS_S3_FILE_OVERWRITE": False,
-        "AWS_S3_USE_THREADS": True,
-        "AWS_S3_MAX_POOL_CONNECTIONS": 10,
-        "AWS_S3_CONNECT_TIMEOUT": 60,  # 60 seconds
-    }
-
     s3_settings_suffix = ""
 
     def _setup(self):
-        self.settings = Settings()
-        # Configure own settings.
-        for setting_key, setting_default_value in self.default_auth_settings.items():
-            setattr(
-                self.settings,
-                setting_key,
-                self._kwargs.get(
-                    setting_key.lower(),
-                    getattr(settings, setting_key, setting_default_value),
-                ),
-            )
-        for setting_key, setting_default_value in self.default_s3_settings.items():
-            setattr(
-                self.settings,
-                setting_key,
-                self._kwargs.get(
-                    setting_key.lower(),
-                    getattr(settings, setting_key + self.s3_settings_suffix, setting_default_value),
-                ),
-            )
-        # Validate settings.
-        if not self.settings.AWS_S3_BUCKET_NAME:
-            raise ImproperlyConfigured(
-                f"Setting AWS_S3_BUCKET_NAME{self.s3_settings_suffix} is required."
-            )
-        # Create a thread-local connection manager.
-        self._connections = _Local(self)
-        # Set transfer config for S3 operations
-        self._transfer_config = TransferConfig(use_threads=self.settings.AWS_S3_USE_THREADS)
+        self._client = self.session.client('s3', **self.settings.boto3_client_kwargs())
 
-    @property
-    def s3_connection(self):
-        return self._connections.s3_connection
+    def s3_client(self, schema: str = 's3'):
+        return self._client
+
+    def s3_client_presigning(self, schema: str = 's3'):
+        return self._client
 
     def _setting_changed_received(self, setting, **kwargs):
         if setting.startswith("AWS_"):
@@ -207,15 +205,17 @@ class S3Storage(Storage):
 
     def __init__(self, **kwargs):
         # Check for unknown kwargs.
+        settings_keys = {f.name for f in fields(Settings)}
         for kwarg_key in kwargs.keys():
-            if (
-                kwarg_key.upper() not in self.default_auth_settings
-                and kwarg_key.upper() not in self.default_s3_settings
-            ):
-                raise ImproperlyConfigured(f"Unknown S3Storage parameter: {kwarg_key}")
-        # Set up the storage.
-        self._kwargs = kwargs
+            if kwarg_key.upper() not in settings_keys:
+                raise ImproperlyConfigured(f"Unknown S3Storage parameters: {kwarg_key}")
+
+        self._kwargs_settings = kwargs
+        self.settings = Settings.from_kwargs_and_django_settings(self._kwargs_settings, settings)
+
+        self.session = boto3.Session()
         self._setup()
+
         # Re-initialize the storage if an AWS setting changes.
         setting_changed.connect(self._setting_changed_received)
         # Register system checks.
@@ -238,7 +238,7 @@ class S3Storage(Storage):
         return errors
 
     def __reduce__(self):
-        return unpickle_helper, (self.__class__, self._kwargs)
+        return unpickle_helper, (self.__class__, self._kwargs_settings)
 
     # Helpers.
 
@@ -304,7 +304,7 @@ class S3Storage(Storage):
             raise ValueError("S3 files can only be opened in read-only mode")
         # Load the key into a temporary file. It would be nice to stream the
         # content, but S3 doesn't support seeking, which is sometimes needed.
-        obj = self.s3_connection.get_object(**self._object_params(name))
+        obj = self.s3_client().get_object(**self._object_params(name))
         content = self.new_temporary_file()
         shutil.copyfileobj(obj["Body"], content)
         content.seek(0)
@@ -364,12 +364,12 @@ class S3Storage(Storage):
         original_close = content.close
         content.close = lambda: None
         try:
-            self.s3_connection.upload_fileobj(
+            self.s3_client().upload_fileobj(
                 content,
                 put_params.pop('Bucket'),
                 put_params.pop('Key'),
                 ExtraArgs=put_params,
-                Config=self._transfer_config,
+                Config=self.settings.transfer_config,
             )
         finally:
             # Restore the original close method.
@@ -401,22 +401,22 @@ class S3Storage(Storage):
     @_wrap_errors
     def meta(self, name):
         """Returns a dictionary of metadata associated with the key."""
-        return self.s3_connection.head_object(**self._object_params(name))
+        return self.s3_client().head_object(**self._object_params(name))
 
     @_wrap_errors
     def delete(self, name):
-        self.s3_connection.delete_object(**self._object_params(name))
+        self.s3_client().delete_object(**self._object_params(name))
 
     @_wrap_errors
     def copy(self, src_name, dst_name):
-        self.s3_connection.copy_object(
+        self.s3_client().copy_object(
             CopySource=self._object_params(src_name), **self._object_params(dst_name)
         )
 
     @_wrap_errors
     def rename(self, src_name, dst_name):
         self.copy(src_name, dst_name)
-        self.s3_connection.delete_object(**self._object_params(src_name))
+        self.s3_client().delete_object(**self._object_params(src_name))
 
     def exists(self, name):
         name = _to_posix_path(name)
@@ -425,7 +425,7 @@ class S3Storage(Storage):
             # with this prefix.
             try:
                 params = self._object_params(name)
-                results = self.s3_connection.list_objects_v2(
+                results = self.s3_client().list_objects_v2(
                     Bucket=params['Bucket'],
                     MaxKeys=1,
                     Prefix=params['Key']
@@ -451,7 +451,7 @@ class S3Storage(Storage):
         # Look through the paths, parsing out directories and paths.
         files = []
         dirs = []
-        paginator = self.s3_connection.get_paginator("list_objects_v2")
+        paginator = self.s3_client().get_paginator("list_objects_v2")
         pages = paginator.paginate(
             Bucket=params['Bucket'],
             Delimiter="/",
@@ -484,7 +484,7 @@ class S3Storage(Storage):
         # Otherwise, generate the URL.
         params = extra_params.copy() if extra_params else {}
         params.update(self._object_params(name))
-        url = self.s3_connection.generate_presigned_url(
+        url = self.s3_client().generate_presigned_url(
             ClientMethod=client_method,
             Params=params,
             ExpiresIn=self.settings.AWS_S3_MAX_AGE_SECONDS,
@@ -517,7 +517,7 @@ class S3Storage(Storage):
     get_created_time = get_accessed_time = get_modified_time
 
     def sync_meta_iter(self):
-        paginator = self.s3_connection.get_paginator("list_objects_v2")
+        paginator = self.s3_client().get_paginator("list_objects_v2")
         pages = paginator.paginate(
             Bucket=self.settings.AWS_S3_BUCKET_NAME,
             Prefix=self.settings.AWS_S3_KEY_PREFIX,
@@ -545,7 +545,7 @@ class S3Storage(Storage):
                         except KeyError:
                             pass
                 # Update the metadata.
-                self.s3_connection.copy_object(
+                self.s3_client().copy_object(
                     ContentType=obj["ContentType"],
                     CopySource={
                         "Bucket": self.settings.AWS_S3_BUCKET_NAME,
@@ -561,34 +561,34 @@ class S3Storage(Storage):
             pass
 
 
-class StaticS3Storage(S3Storage):
+# class StaticS3Storage(S3Storage):
 
-    """
-    An S3 storage for storing static files.
-    """
+#     """
+#     An S3 storage for storing static files.
+#     """
 
-    default_s3_settings = S3Storage.default_s3_settings.copy()
-    default_s3_settings.update(
-        {
-            "AWS_S3_BUCKET_AUTH": False,
-        }
-    )
+#     default_s3_settings = S3Storage.default_s3_settings.copy()
+#     default_s3_settings.update(
+#         {
+#             "AWS_S3_BUCKET_AUTH": False,
+#         }
+#     )
 
-    s3_settings_suffix = "_STATIC"
+#     s3_settings_suffix = "_STATIC"
 
 
-class ManifestStaticS3Storage(ManifestFilesMixin, StaticS3Storage):
-    default_s3_settings = StaticS3Storage.default_s3_settings.copy()
-    default_s3_settings.update(
-        {
-            "AWS_S3_MAX_AGE_SECONDS_CACHED": 60 * 60 * 24 * 365,  # 1 year.
-        }
-    )
+# class ManifestStaticS3Storage(ManifestFilesMixin, StaticS3Storage):
+#     default_s3_settings = StaticS3Storage.default_s3_settings.copy()
+#     default_s3_settings.update(
+#         {
+#             "AWS_S3_MAX_AGE_SECONDS_CACHED": 60 * 60 * 24 * 365,  # 1 year.
+#         }
+#     )
 
-    def post_process(self, *args, **kwargs):
-        initial_aws_s3_max_age_seconds = self.settings.AWS_S3_MAX_AGE_SECONDS
-        self.settings.AWS_S3_MAX_AGE_SECONDS = self.settings.AWS_S3_MAX_AGE_SECONDS_CACHED
-        try:
-            yield from super().post_process(*args, **kwargs)
-        finally:
-            self.settings.AWS_S3_MAX_AGE_SECONDS = initial_aws_s3_max_age_seconds
+#     def post_process(self, *args, **kwargs):
+#         initial_aws_s3_max_age_seconds = self.settings.AWS_S3_MAX_AGE_SECONDS
+#         self.settings.AWS_S3_MAX_AGE_SECONDS = self.settings.AWS_S3_MAX_AGE_SECONDS_CACHED
+#         try:
+#             yield from super().post_process(*args, **kwargs)
+#         finally:
+#             self.settings.AWS_S3_MAX_AGE_SECONDS = initial_aws_s3_max_age_seconds

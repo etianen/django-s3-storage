@@ -33,6 +33,7 @@ log = logging.getLogger(__name__)
 from dataclasses import dataclass, field, fields
 
 
+@deconstructible
 @dataclass
 class Endpoints:
     endpoint_url: str | None = None
@@ -111,12 +112,11 @@ class Settings:
     AWS_S3_BUCKET_NAME: str = ""
     AWS_S3_ADDRESSING_STYLE: str = "auto"
     # "AWS_S3_ENDPOINT_URL": "",
-    # "AWS_S3_ENDPOINTS": {
-    #     's3': Endpoints(),
-    #     's3-minio': Endpoints(
-    #         endpoint_url='http://minio:9000', endpoint_url_presigning='http://localhost:9000'
-    #     ),
-    # },
+    AWS_S3_ENDPOINTS: dict = field(
+        default_factory=lambda: {
+            's3': Endpoints(),
+        }
+    )
     AWS_S3_KEY_PREFIX: str = ""
     AWS_S3_BUCKET_AUTH: bool = True
     AWS_S3_MAX_AGE_SECONDS: int = 60 * 60  # 1 hours.
@@ -191,13 +191,38 @@ class S3Storage(Storage):
     s3_settings_suffix = ""
 
     def _setup(self):
-        self._client = self.session.client('s3', **self.settings.boto3_client_kwargs())
+        self.settings = Settings.from_kwargs_and_django_settings(self._kwargs_settings, settings)
 
-    def s3_client(self, schema: str = 's3'):
-        return self._client
+        self._clients = {}
+        self._clients_presigning = {}
 
-    def s3_client_presigning(self, schema: str = 's3'):
-        return self._client
+        for schema, endpoints in self.settings.AWS_S3_ENDPOINTS.items():
+            endpoints: Endpoints = endpoints
+
+            # Primary client
+            client_settings = self.settings.boto3_client_kwargs()
+            client_settings['endpoint_url'] = endpoints.endpoint_url
+
+            self._clients[schema] = self.session.client('s3', **client_settings)
+
+            # Presigning client. Create a client for presigning
+            # if the endpoint_url_presigning is set to something unique.
+            # Otherwise, use the same as for the primary client.
+            if (
+                endpoints.endpoint_url_presigning
+                and endpoints.endpoint_url_presigning != endpoints.endpoint_url
+            ):
+                client_settings = self.settings.boto3_client_kwargs()
+                client_settings['endpoint_url'] = endpoints.endpoint_url_presigning
+                self._clients_presigning[schema] = self.session.client('s3', **client_settings)
+            else:
+                self._clients_presigning[schema] = self._clients[schema]
+
+    def s3_client(self, schema: str):
+        return self._clients[schema]
+
+    def s3_client_presigning(self, schema: str):
+        return self._clients_presigning[schema]
 
     def _setting_changed_received(self, setting, **kwargs):
         if setting.startswith("AWS_"):
@@ -211,7 +236,6 @@ class S3Storage(Storage):
                 raise ImproperlyConfigured(f"Unknown S3Storage parameters: {kwarg_key}")
 
         self._kwargs_settings = kwargs
-        self.settings = Settings.from_kwargs_and_django_settings(self._kwargs_settings, settings)
 
         self.session = boto3.Session()
         self._setup()
@@ -241,6 +265,10 @@ class S3Storage(Storage):
         return unpickle_helper, (self.__class__, self._kwargs_settings)
 
     # Helpers.
+
+    def _schema(self, name) -> str:
+        url_split = urlsplit(name)
+        return url_split.scheme
 
     def _get_key_name(self, name):
         if name.startswith("/"):
@@ -304,7 +332,8 @@ class S3Storage(Storage):
             raise ValueError("S3 files can only be opened in read-only mode")
         # Load the key into a temporary file. It would be nice to stream the
         # content, but S3 doesn't support seeking, which is sometimes needed.
-        obj = self.s3_client().get_object(**self._object_params(name))
+        schema = self._schema(name)
+        obj = self.s3_client(schema).get_object(**self._object_params(name))
         content = self.new_temporary_file()
         shutil.copyfileobj(obj["Body"], content)
         content.seek(0)
@@ -364,7 +393,8 @@ class S3Storage(Storage):
         original_close = content.close
         content.close = lambda: None
         try:
-            self.s3_client().upload_fileobj(
+            schema = self._schema(name)
+            self.s3_client(schema).upload_fileobj(
                 content,
                 put_params.pop('Bucket'),
                 put_params.pop('Key'),
@@ -401,22 +431,26 @@ class S3Storage(Storage):
     @_wrap_errors
     def meta(self, name):
         """Returns a dictionary of metadata associated with the key."""
-        return self.s3_client().head_object(**self._object_params(name))
+        schema = self._schema(name)
+        return self.s3_client(schema).head_object(**self._object_params(name))
 
     @_wrap_errors
     def delete(self, name):
-        self.s3_client().delete_object(**self._object_params(name))
+        schema = self._schema(name)
+        self.s3_client(schema).delete_object(**self._object_params(name))
 
     @_wrap_errors
     def copy(self, src_name, dst_name):
-        self.s3_client().copy_object(
+        schema = self._schema(src_name)
+        self.s3_client(schema).copy_object(
             CopySource=self._object_params(src_name), **self._object_params(dst_name)
         )
 
     @_wrap_errors
     def rename(self, src_name, dst_name):
         self.copy(src_name, dst_name)
-        self.s3_client().delete_object(**self._object_params(src_name))
+        schema = self._schema(src_name)
+        self.s3_client(schema).delete_object(**self._object_params(src_name))
 
     def exists(self, name):
         name = _to_posix_path(name)
@@ -424,8 +458,9 @@ class S3Storage(Storage):
             # This looks like a directory, but on S3 directories are virtual, so we need to see if the key starts
             # with this prefix.
             try:
+                schema = self._schema(name)
                 params = self._object_params(name)
-                results = self.s3_client().list_objects_v2(
+                results = self.s3_client(schema).list_objects_v2(
                     Bucket=params['Bucket'],
                     MaxKeys=1,
                     Prefix=params['Key']
@@ -445,13 +480,14 @@ class S3Storage(Storage):
             return True
 
     def listdir(self, path):
+        schema = self._schema(path)
         params = self._object_params(path)
         key = params['Key']
         path = "" if key == "." else key + "/"
         # Look through the paths, parsing out directories and paths.
         files = []
         dirs = []
-        paginator = self.s3_client().get_paginator("list_objects_v2")
+        paginator = self.s3_client(schema).get_paginator("list_objects_v2")
         pages = paginator.paginate(
             Bucket=params['Bucket'],
             Delimiter="/",
@@ -484,7 +520,8 @@ class S3Storage(Storage):
         # Otherwise, generate the URL.
         params = extra_params.copy() if extra_params else {}
         params.update(self._object_params(name))
-        url = self.s3_client().generate_presigned_url(
+        schema = self._schema(name)
+        url = self.s3_client_presigning(schema).generate_presigned_url(
             ClientMethod=client_method,
             Params=params,
             ExpiresIn=self.settings.AWS_S3_MAX_AGE_SECONDS,

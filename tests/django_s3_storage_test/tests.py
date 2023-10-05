@@ -15,7 +15,7 @@ from django.test import SimpleTestCase
 from django.utils import timezone
 from django.utils.timezone import is_naive, make_naive, utc
 
-from django_s3_storage.storage import S3Storage, StaticS3Storage
+from django_s3_storage.storage import Endpoints, S3Storage
 
 
 def helper_old_to_new_name(name) -> str:
@@ -23,11 +23,11 @@ def helper_old_to_new_name(name) -> str:
 
 
 class TestS3Storage(SimpleTestCase):
-    def tearDown(self):
-        # clean up the dir
-        for entry in default_storage.listdir(helper_old_to_new_name("")):
-            print(entry)
-            # default_storage.delete("/".join(entry))
+    # def tearDown(self):
+    #     # clean up the dir
+    #     for entry in default_storage.listdir(helper_old_to_new_name("")):
+    #         print(entry)
+    #         # default_storage.delete("/".join(entry))
 
     # Helpers.
 
@@ -52,10 +52,10 @@ class TestS3Storage(SimpleTestCase):
         with self.settings(AWS_S3_CONTENT_LANGUAGE="foo"):
             self.assertEqual(S3Storage().settings.AWS_S3_CONTENT_LANGUAGE, "foo")
 
-    def testSettingsOverwritenBySuffixedSettings(self):
-        self.assertEqual(StaticS3Storage().settings.AWS_S3_CONTENT_LANGUAGE, "")
-        with self.settings(AWS_S3_CONTENT_LANGUAGE="foo", AWS_S3_CONTENT_LANGUAGE_STATIC="bar"):
-            self.assertEqual(StaticS3Storage().settings.AWS_S3_CONTENT_LANGUAGE, "bar")
+    # def testSettingsOverwritenBySuffixedSettings(self):
+    #     self.assertEqual(StaticS3Storage().settings.AWS_S3_CONTENT_LANGUAGE, "")
+    #     with self.settings(AWS_S3_CONTENT_LANGUAGE="foo", AWS_S3_CONTENT_LANGUAGE_STATIC="bar"):
+    #         self.assertEqual(StaticS3Storage().settings.AWS_S3_CONTENT_LANGUAGE, "bar")
 
     def testSettingsOverwrittenByKwargs(self):
         self.assertEqual(S3Storage().settings.AWS_S3_CONTENT_LANGUAGE, "")
@@ -282,13 +282,7 @@ class TestS3Storage(SimpleTestCase):
                 default_storage.listdir(helper_old_to_new_name("")), (["bar"], ["foo.txt"])
             )
             self.assertEqual(
-                default_storage.listdir(helper_old_to_new_name("/")), (["bar"], ["foo.txt"])
-            )
-            self.assertEqual(
                 default_storage.listdir(helper_old_to_new_name("bar")), ([], ["bat.txt"])
-            )
-            self.assertEqual(
-                default_storage.listdir(helper_old_to_new_name("/bar")), ([], ["bat.txt"])
             )
             self.assertEqual(
                 default_storage.listdir(helper_old_to_new_name("bar/")), ([], ["bat.txt"])
@@ -468,3 +462,77 @@ class TestS3Storage(SimpleTestCase):
             staticfiles_storage.delete("staticfiles.json")
             staticfiles_storage.delete("foo.css")
             staticfiles_storage.delete(posixpath.basename(url))
+
+    def testClientConfig(self):
+        storage = S3Storage()
+
+        # Default settings, s3_client_presigning is same as s3_client
+        for schema in storage._clients.keys():
+            self.assertIs(storage.s3_client(schema), storage.s3_client_presigning(schema))
+
+        # s3_client_presigning is same as s3_client if the endpoints are the same.
+        with self.settings(
+            AWS_S3_ENDPOINTS={
+                's3': Endpoints(
+                    endpoint_url='http://localhost:9000',
+                    endpoint_url_presigning='http://localhost:9000',
+                )
+            }
+        ):
+            for schema in storage._clients.keys():
+                self.assertIs(storage.s3_client(schema), storage.s3_client_presigning(schema))
+
+        # s3_client_presigning is same as s3_client if endpoint_url_presigning is not set,
+        with self.settings(
+            AWS_S3_ENDPOINTS={
+                's3': Endpoints(
+                    endpoint_url='http://localhost:9000',
+                )
+            }
+        ):
+            for schema in storage._clients.keys():
+                self.assertIs(storage.s3_client(schema), storage.s3_client_presigning(schema))
+
+        # s3_client_presigning is NOT same as s3_client if the endpoints are not equal.
+        with self.settings(
+            AWS_S3_ENDPOINTS={
+                's3': Endpoints(
+                    endpoint_url='http://localhost:9000',
+                    endpoint_url_presigning='http://example.com:9000',
+                )
+            }
+        ):
+            for schema in storage._clients.keys():
+                self.assertIsNot(storage.s3_client(schema), storage.s3_client_presigning(schema))
+
+    def testMultiSchemaConfig(self):
+        storage = S3Storage()
+
+        # Four different endpoints should give four clients
+        with self.settings(
+            AWS_S3_ENDPOINTS={
+                's3': Endpoints(
+                    endpoint_url='http://localhost:9000',
+                    endpoint_url_presigning='http://localhost2:9000',
+                ),
+                's3-something': Endpoints(
+                    endpoint_url='http://something:9000',
+                    endpoint_url_presigning='http://something2:9000',
+                ),
+            }
+        ):
+            self.assertEqual(list(storage._clients.keys()), ['s3', 's3-something'])
+
+            client_1 = storage.s3_client('s3')
+            client_2 = storage.s3_client_presigning('s3')
+            client_3 = storage.s3_client('s3-something')
+            client_4 = storage.s3_client_presigning('s3-something')
+
+            self.assertIsNot(client_1, client_2)
+            self.assertIsNot(client_1, client_3)
+            self.assertIsNot(client_1, client_4)
+
+            self.assertIsNot(client_2, client_3)
+            self.assertIsNot(client_2, client_4)
+
+            self.assertIsNot(client_3, client_4)

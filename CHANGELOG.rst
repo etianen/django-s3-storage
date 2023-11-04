@@ -1,6 +1,11 @@
 django-s3-storage changelog
 ===========================
 
+0.15.0
+------
+
+- Added support for opening files in text mode on Python 3.11+ (@etianen).
+
 0.14.0
 ------
 

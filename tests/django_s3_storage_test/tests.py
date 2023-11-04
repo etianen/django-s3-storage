@@ -1,5 +1,7 @@
 import posixpath
+import sys
 import time
+import unittest
 from contextlib import contextmanager
 from datetime import timedelta
 from io import StringIO
@@ -86,6 +88,7 @@ class TestS3Storage(SimpleTestCase):
         with self.save_file(content="foo"):
             self.assertEqual(default_storage.open("foo.txt").read(), b"foo")
 
+    @unittest.skipIf(sys.version_info < (3, 12))
     def testOpenTextMode(self):
         with self.save_file(content="foo"):
             self.assertEqual(default_storage.open("foo.txt", "r").read(), "foo")

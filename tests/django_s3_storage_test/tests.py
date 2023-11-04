@@ -88,7 +88,7 @@ class TestS3Storage(SimpleTestCase):
         with self.save_file(content="foo"):
             self.assertEqual(default_storage.open("foo.txt").read(), b"foo")
 
-    @unittest.skipIf(sys.version_info < (3, 12))
+    @unittest.skipIf(sys.version_info < (3, 11), reason="Python 3.11 required")
     def testOpenTextMode(self):
         with self.save_file(content="foo"):
             self.assertEqual(default_storage.open("foo.txt", "r").read(), "foo")

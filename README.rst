@@ -116,8 +116,8 @@ Use the following settings to configure the S3 file storage. You must provide at
     # extra characters appended.
     AWS_S3_FILE_OVERWRITE = False
 
-    # If True, use default behaviour for boto3 of using threads when doing S3 operations. If gevent or similar
-    # is used it must be disabled
+    # If True, use default behaviour for boto3 of using threads when doing S3 operations.
+    # If gevent or similar is used it must be disabled due to interaction with boto3 causing time-outs.
     AWS_S3_USE_THREADS = True
 
     # Max pool of connections for massive S3 interactions

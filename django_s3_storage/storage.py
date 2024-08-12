@@ -4,6 +4,8 @@ import mimetypes
 import os
 import posixpath
 import shutil
+import sys
+import warnings
 from contextlib import closing
 from datetime import timezone
 from functools import partial, wraps
@@ -197,6 +199,11 @@ class S3Storage(Storage):
         if not self.settings.AWS_S3_BUCKET_NAME:
             raise ImproperlyConfigured(
                 f"Setting AWS_S3_BUCKET_NAME{self.s3_settings_suffix} is required."
+            )
+        if "gevent" in sys.modules and self.settings.AWS_S3_USE_THREADS:
+            warnings.warn(
+                "boto3 and gevent interaction likely. "
+                "Please set AWS_S3_USE_THREADS to False."
             )
         # Create a thread-local connection manager.
         self._connections = _Local(self)
